@@ -1,19 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaSignOutAlt, FaFilter } from 'react-icons/fa';
-import { useAuth } from '../contexts/AuthContext';
-import { todosAPI } from '../services/api';
-import TodoCard from '../components/TodoCard';
-import TodoModal from '../components/TodoModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { todosAPI } from '@/services/api';
+import TodoCard from '@/components/TodoCard';
+import TodoModal from '@/components/TodoModal';
+import { TodoItemResponse, TodoFiltersExtended, CreateTodoRequest } from '@/types';
 import './Home.css';
 
 const Home = () => {
-  const [todos, setTodos] = useState([]);
-  const [filteredTodos, setFilteredTodos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
+  const [todos, setTodos] = useState<TodoItemResponse[]>([]);
+  const [filteredTodos, setFilteredTodos] = useState<TodoItemResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [filters, setFilters] = useState<TodoFiltersExtended>({
     dueDateFrom: '',
     dueDateTo: '',
     createdDateFrom: '',
@@ -31,9 +32,10 @@ const Home = () => {
 
   useEffect(() => {
     applyFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todos, filters]);
 
-  const fetchTodos = async () => {
+  const fetchTodos = async (): Promise<void> => {
     try {
       setLoading(true);
       const data = await todosAPI.getAll();
@@ -45,8 +47,8 @@ const Home = () => {
     }
   };
 
-  const applyFilters = () => {
-    let filtered = [...todos];
+  const applyFilters = (): void => {
+    let filtered: TodoItemResponse[] = [...todos];
 
     // Search term filter
     if (filters.searchTerm) {
@@ -62,43 +64,44 @@ const Home = () => {
     // Due date filters
     if (filters.dueDateFrom) {
       filtered = filtered.filter(
-        todo => new Date(todo.dueDate) >= new Date(filters.dueDateFrom)
+        (todo) => new Date(todo.dueDate) >= new Date(filters.dueDateFrom!)
       );
     }
     if (filters.dueDateTo) {
       filtered = filtered.filter(
-        todo => new Date(todo.dueDate) <= new Date(filters.dueDateTo)
+        (todo) => new Date(todo.dueDate) <= new Date(filters.dueDateTo!)
       );
     }
 
     // Created date filters
     if (filters.createdDateFrom) {
       filtered = filtered.filter(
-        todo => new Date(todo.createdDate) >= new Date(filters.createdDateFrom)
+        (todo) => new Date(todo.createdDate) >= new Date(filters.createdDateFrom!)
       );
     }
     if (filters.createdDateTo) {
       filtered = filtered.filter(
-        todo => new Date(todo.createdDate) <= new Date(filters.createdDateTo)
+        (todo) => new Date(todo.createdDate) <= new Date(filters.createdDateTo!)
       );
     }
 
     // Tag filter
     if (filters.tag) {
-      filtered = filtered.filter(todo =>
-        todo.tags?.some(tag => tag.toLowerCase().includes(filters.tag.toLowerCase()))
+      filtered = filtered.filter((todo) =>
+        todo.tags?.some((tag) => tag.toLowerCase().includes(filters.tag!.toLowerCase()))
       );
     }
 
     // Sort by due date
-    filtered.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+    filtered.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
     setFilteredTodos(filtered);
   };
 
-  const handleCreateTodo = async (todoData) => {
+  const handleCreateTodo = async (todoData: CreateTodoRequest): Promise<void> => {
     try {
       await todosAPI.create(todoData);
+      setIsModalOpen(false);
       fetchTodos();
     } catch (error) {
       console.error('Error creating todo:', error);
@@ -106,8 +109,8 @@ const Home = () => {
     }
   };
 
-  const handleDeleteTodo = async (id) => {
-    if (!confirm('Are you sure you want to delete this todo?')) return;
+  const handleDeleteTodo = async (id: number): Promise<void> => {
+    if (!window.confirm('Are you sure you want to delete this todo?')) return;
 
     try {
       await todosAPI.delete(id);
@@ -118,12 +121,12 @@ const Home = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = (): void => {
     logout();
     navigate('/login');
   };
 
-  const clearFilters = () => {
+  const clearFilters = (): void => {
     setFilters({
       dueDateFrom: '',
       dueDateTo: '',
@@ -132,6 +135,10 @@ const Home = () => {
       tag: '',
       searchTerm: '',
     });
+  };
+
+  const handleFilterChange = (field: keyof TodoFiltersExtended, value: string): void => {
+    setFilters({ ...filters, [field]: value });
   };
 
   return (
@@ -155,7 +162,9 @@ const Home = () => {
               type="text"
               placeholder="Search todos..."
               value={filters.searchTerm}
-              onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                handleFilterChange('searchTerm', e.target.value)
+              }
             />
           </div>
 
@@ -180,8 +189,8 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.dueDateFrom}
-                  onChange={(e) =>
-                    setFilters({ ...filters, dueDateFrom: e.target.value })
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    handleFilterChange('dueDateFrom', e.target.value)
                   }
                 />
               </div>
@@ -191,8 +200,8 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.dueDateTo}
-                  onChange={(e) =>
-                    setFilters({ ...filters, dueDateTo: e.target.value })
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    handleFilterChange('dueDateTo', e.target.value)
                   }
                 />
               </div>
@@ -202,8 +211,8 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.createdDateFrom}
-                  onChange={(e) =>
-                    setFilters({ ...filters, createdDateFrom: e.target.value })
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    handleFilterChange('createdDateFrom', e.target.value)
                   }
                 />
               </div>
@@ -213,8 +222,8 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.createdDateTo}
-                  onChange={(e) =>
-                    setFilters({ ...filters, createdDateTo: e.target.value })
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    handleFilterChange('createdDateTo', e.target.value)
                   }
                 />
               </div>
@@ -225,7 +234,9 @@ const Home = () => {
                   type="text"
                   placeholder="Filter by tag..."
                   value={filters.tag}
-                  onChange={(e) => setFilters({ ...filters, tag: e.target.value })}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    handleFilterChange('tag', e.target.value)
+                  }
                 />
               </div>
             </div>

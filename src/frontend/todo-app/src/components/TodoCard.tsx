@@ -1,8 +1,9 @@
 import { FaCalendar, FaMapMarkerAlt, FaTag, FaTrash } from 'react-icons/fa';
+import { TodoCardProps } from '@/types';
 import './TodoCard.css';
 
-const TodoCard = ({ todo, onDelete }) => {
-  const formatDate = (dateString) => {
+const TodoCard = ({ todo, onDelete }: TodoCardProps) => {
+  const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -11,7 +12,7 @@ const TodoCard = ({ todo, onDelete }) => {
     });
   };
 
-  const isOverdue = new Date(todo.dueDate) < new Date();
+  const isOverdue: boolean = new Date(todo.dueDate) < new Date();
 
   return (
     <div className={`todo-card ${isOverdue ? 'overdue' : ''}`}>

@@ -1,10 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Home from './pages/Home';
+import { ReactNode } from 'react';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import Login from '@/pages/Login';
+import Signup from '@/pages/Signup';
+import Home from '@/pages/Home';
 
-const ProtectedRoute = ({ children }) => {
+interface ProtectedRouteProps {
+  children: ReactNode;
+}
+
+const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -16,10 +21,14 @@ const ProtectedRoute = ({ children }) => {
     }}>Loading...</div>;
   }
 
-  return user ? children : <Navigate to="/login" />;
+  return user ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
-const PublicRoute = ({ children }) => {
+interface PublicRouteProps {
+  children: ReactNode;
+}
+
+const PublicRoute = ({ children }: PublicRouteProps) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -31,7 +40,7 @@ const PublicRoute = ({ children }) => {
     }}>Loading...</div>;
   }
 
-  return user ? <Navigate to="/" /> : children;
+  return user ? <Navigate to="/" replace /> : <>{children}</>;
 };
 
 function App() {

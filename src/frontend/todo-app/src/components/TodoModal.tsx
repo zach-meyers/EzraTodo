@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { FaTimes } from 'react-icons/fa';
+import { TodoModalProps, TodoFormData } from '@/types';
 import './TodoModal.css';
 
-const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
-  const [formData, setFormData] = useState({
+const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalProps) => {
+  const [formData, setFormData] = useState<TodoFormData>({
     name: '',
     dueDate: '',
     notes: '',
@@ -31,7 +32,7 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
     }
   }, [initialData, isOpen]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
 
     const todoData = {
@@ -46,6 +47,13 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
 
     onSubmit(todoData);
     onClose();
+  };
+
+  const handleInputChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ): void => {
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: value });
   };
 
   if (!isOpen) return null;
@@ -67,7 +75,7 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
               id="name"
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={handleInputChange}
               required
               placeholder="Enter todo name"
             />
@@ -79,7 +87,7 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
               id="dueDate"
               type="date"
               value={formData.dueDate}
-              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+              onChange={handleInputChange}
               required
             />
           </div>
@@ -89,9 +97,9 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
             <textarea
               id="notes"
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={handleInputChange}
               placeholder="Add any additional details..."
-              rows="4"
+              rows={4}
             />
           </div>
 
@@ -101,7 +109,7 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
               id="tags"
               type="text"
               value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              onChange={handleInputChange}
               placeholder="Enter tags separated by commas (e.g., work, urgent, meeting)"
             />
             <small className="help-text">Separate multiple tags with commas</small>
@@ -113,7 +121,7 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
               id="location"
               type="text"
               value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              onChange={handleInputChange}
               placeholder="Enter location"
             />
           </div>
