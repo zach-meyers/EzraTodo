@@ -1,9 +1,9 @@
-import { FaCalendar, FaMapMarkerAlt, FaTag, FaTrash } from 'react-icons/fa';
+import { FaCalendar, FaMapMarkerAlt, FaTag, FaTrash, FaEdit } from 'react-icons/fa';
 import { useDeleteTodo } from '@/hooks/useTodoMutations';
 import { TodoCardProps } from '@/types';
 import './TodoCard.css';
 
-const TodoCard = ({ todo }: TodoCardProps) => {
+const TodoCard = ({ todo, onEdit }: TodoCardProps) => {
   const deleteTodo = useDeleteTodo();
 
   const formatDate = (dateString: string): string => {
@@ -34,15 +34,28 @@ const TodoCard = ({ todo }: TodoCardProps) => {
     <div className={`todo-card ${isOverdue ? 'overdue' : ''}`}>
       <div className="todo-card-header">
         <h3>{todo.name}</h3>
-        <button
-          className="delete-btn"
-          onClick={handleDelete}
-          disabled={isDeleting}
-          title={isDeleting ? 'Deleting...' : 'Delete todo'}
-          style={{ opacity: isDeleting ? 0.5 : 1 }}
-        >
-          <FaTrash />
-        </button>
+        <div className="card-actions">
+          {onEdit && (
+            <button
+              className="edit-btn"
+              onClick={() => onEdit(todo)}
+              disabled={isDeleting}
+              title="Edit todo"
+              style={{ opacity: isDeleting ? 0.5 : 1 }}
+            >
+              <FaEdit />
+            </button>
+          )}
+          <button
+            className="delete-btn"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            title={isDeleting ? 'Deleting...' : 'Delete todo'}
+            style={{ opacity: isDeleting ? 0.5 : 1 }}
+          >
+            <FaTrash />
+          </button>
+        </div>
       </div>
 
       {todo.notes && (

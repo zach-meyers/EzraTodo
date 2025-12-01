@@ -5,11 +5,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTodos } from '@/hooks/useTodos';
 import TodoCard from '@/components/TodoCard';
 import TodoModal from '@/components/TodoModal';
-import { TodoFiltersExtended } from '@/types';
+import { TodoFiltersExtended, TodoItemResponse } from '@/types';
 import './Home.css';
 
 const Home = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [editingTodo, setEditingTodo] = useState<TodoItemResponse | null>(null);
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [filters, setFilters] = useState<TodoFiltersExtended>({
     dueDateFrom: '',
@@ -83,6 +84,21 @@ const Home = () => {
 
     return filtered;
   }, [todos, filters]);
+
+  const handleCreateTodo = (): void => {
+    setEditingTodo(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditTodo = (todo: TodoItemResponse): void => {
+    setEditingTodo(todo);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = (): void => {
+    setIsModalOpen(false);
+    setEditingTodo(null);
+  };
 
   const handleLogout = (): void => {
     logout();
@@ -190,7 +206,7 @@ const Home = () => {
             </button>
             <button
               className="btn-create"
-              onClick={() => setIsModalOpen(true)}
+              onClick={handleCreateTodo}
             >
               <FaPlus /> New Todo
             </button>
@@ -278,7 +294,7 @@ const Home = () => {
                 : 'Try adjusting your filters or search term.'}
             </p>
             {todos.length === 0 && (
-              <button className="btn-create" onClick={() => setIsModalOpen(true)}>
+              <button className="btn-create" onClick={handleCreateTodo}>
                 <FaPlus /> Create Todo
               </button>
             )}
@@ -286,7 +302,7 @@ const Home = () => {
         ) : (
           <div className="todos-grid">
             {filteredTodos.map((todo) => (
-              <TodoCard key={todo.id} todo={todo} />
+              <TodoCard key={todo.id} todo={todo} onEdit={handleEditTodo} />
             ))}
           </div>
         )}
@@ -294,7 +310,8 @@ const Home = () => {
 
       <TodoModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
+        initialData={editingTodo}
       />
     </div>
   );

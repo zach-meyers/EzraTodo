@@ -5,6 +5,7 @@ import { ReactNode } from 'react';
 
 export interface TodoCardProps {
   todo: TodoItemResponse;
+  onEdit?: (todo: TodoItemResponse) => void;
 }
 
 export interface TodoModalProps {
