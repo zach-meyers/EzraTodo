@@ -1,17 +1,14 @@
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useMemo, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaSignOutAlt, FaFilter } from 'react-icons/fa';
 import { useAuth } from '@/contexts/AuthContext';
-import { todosAPI } from '@/services/api';
+import { useTodos } from '@/hooks/useTodos';
 import TodoCard from '@/components/TodoCard';
 import TodoModal from '@/components/TodoModal';
-import { TodoItemResponse, TodoFiltersExtended, CreateTodoRequest } from '@/types';
+import { TodoFiltersExtended } from '@/types';
 import './Home.css';
 
 const Home = () => {
-  const [todos, setTodos] = useState<TodoItemResponse[]>([]);
-  const [filteredTodos, setFilteredTodos] = useState<TodoItemResponse[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [filters, setFilters] = useState<TodoFiltersExtended>({
@@ -26,29 +23,18 @@ const Home = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchTodos();
-  }, []);
+  // Query hook - automatic loading, error, and data management
+  const {
+    data: todos = [],
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useTodos();
 
-  useEffect(() => {
-    applyFilters();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todos, filters]);
-
-  const fetchTodos = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      const data = await todosAPI.getAll();
-      setTodos(data);
-    } catch (error) {
-      console.error('Error fetching todos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = (): void => {
-    let filtered: TodoItemResponse[] = [...todos];
+  // Client-side filtering with useMemo for performance
+  const filteredTodos = useMemo(() => {
+    let filtered = [...todos];
 
     // Search term filter
     if (filters.searchTerm) {
@@ -95,31 +81,8 @@ const Home = () => {
     // Sort by due date
     filtered.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-    setFilteredTodos(filtered);
-  };
-
-  const handleCreateTodo = async (todoData: CreateTodoRequest): Promise<void> => {
-    try {
-      await todosAPI.create(todoData);
-      setIsModalOpen(false);
-      fetchTodos();
-    } catch (error) {
-      console.error('Error creating todo:', error);
-      alert('Failed to create todo');
-    }
-  };
-
-  const handleDeleteTodo = async (id: number): Promise<void> => {
-    if (!window.confirm('Are you sure you want to delete this todo?')) return;
-
-    try {
-      await todosAPI.delete(id);
-      fetchTodos();
-    } catch (error) {
-      console.error('Error deleting todo:', error);
-      alert('Failed to delete todo');
-    }
-  };
+    return filtered;
+  }, [todos, filters]);
 
   const handleLogout = (): void => {
     logout();
@@ -140,6 +103,56 @@ const Home = () => {
   const handleFilterChange = (field: keyof TodoFiltersExtended, value: string): void => {
     setFilters({ ...filters, [field]: value });
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="home-container">
+        <nav className="navbar">
+          <div className="navbar-content">
+            <h1>My Todos</h1>
+            <div className="navbar-actions">
+              <span className="user-email">{user?.email}</span>
+              <button className="btn-logout" onClick={handleLogout} title="Logout">
+                <FaSignOutAlt />
+              </button>
+            </div>
+          </div>
+        </nav>
+        <div className="main-content">
+          <div className="loading">Loading todos...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state with retry
+  if (isError) {
+    return (
+      <div className="home-container">
+        <nav className="navbar">
+          <div className="navbar-content">
+            <h1>My Todos</h1>
+            <div className="navbar-actions">
+              <span className="user-email">{user?.email}</span>
+              <button className="btn-logout" onClick={handleLogout} title="Logout">
+                <FaSignOutAlt />
+              </button>
+            </div>
+          </div>
+        </nav>
+        <div className="main-content">
+          <div className="error">
+            <h2>Error Loading Todos</h2>
+            <p>{error.message}</p>
+            <button className="btn-create" onClick={() => refetch()}>
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="home-container">
@@ -175,7 +188,10 @@ const Home = () => {
             >
               <FaFilter /> Filters
             </button>
-            <button className="btn-create" onClick={() => setIsModalOpen(true)}>
+            <button
+              className="btn-create"
+              onClick={() => setIsModalOpen(true)}
+            >
               <FaPlus /> New Todo
             </button>
           </div>
@@ -253,9 +269,7 @@ const Home = () => {
           </p>
         </div>
 
-        {loading ? (
-          <div className="loading">Loading todos...</div>
-        ) : filteredTodos.length === 0 ? (
+        {filteredTodos.length === 0 ? (
           <div className="empty-state">
             <h2>No todos found</h2>
             <p>
@@ -272,7 +286,7 @@ const Home = () => {
         ) : (
           <div className="todos-grid">
             {filteredTodos.map((todo) => (
-              <TodoCard key={todo.id} todo={todo} onDelete={handleDeleteTodo} />
+              <TodoCard key={todo.id} todo={todo} />
             ))}
           </div>
         )}
@@ -281,7 +295,6 @@ const Home = () => {
       <TodoModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateTodo}
       />
     </div>
   );

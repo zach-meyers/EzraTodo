@@ -1,9 +1,10 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { FaTimes } from 'react-icons/fa';
+import { useCreateTodo, useUpdateTodo } from '@/hooks/useTodoMutations';
 import { TodoModalProps, TodoFormData } from '@/types';
 import './TodoModal.css';
 
-const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalProps) => {
+const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModalProps) => {
   const [formData, setFormData] = useState<TodoFormData>({
     name: '',
     dueDate: '',
@@ -11,6 +12,14 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
     tags: '',
     location: '',
   });
+  const [error, setError] = useState<string | null>(null);
+
+  // TanStack Query mutations
+  const createTodo = useCreateTodo();
+  const updateTodo = useUpdateTodo();
+
+  const isEditing = initialData !== null;
+  const mutation = isEditing ? updateTodo : createTodo;
 
   useEffect(() => {
     if (initialData) {
@@ -30,10 +39,13 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
         location: '',
       });
     }
+    // Clear error when modal opens
+    setError(null);
   }, [initialData, isOpen]);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
+    setError(null);
 
     const todoData = {
       name: formData.name,
@@ -45,8 +57,32 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
       location: formData.location || null,
     };
 
-    onSubmit(todoData);
-    onClose();
+    if (isEditing && initialData) {
+      // Update existing todo
+      updateTodo.mutate(
+        { id: initialData.id, todo: todoData },
+        {
+          onSuccess: () => {
+            onClose();
+            onSuccess?.();
+          },
+          onError: (err) => {
+            setError(err.message || 'Failed to update todo');
+          },
+        }
+      );
+    } else {
+      // Create new todo
+      createTodo.mutate(todoData, {
+        onSuccess: () => {
+          onClose();
+          onSuccess?.();
+        },
+        onError: (err) => {
+          setError(err.message || 'Failed to create todo');
+        },
+      });
+    }
   };
 
   const handleInputChange = (
@@ -126,12 +162,33 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
             />
           </div>
 
+          {error && (
+            <div className="error-message" style={{ color: 'red', marginTop: '1rem' }}>
+              {error}
+            </div>
+          )}
+
           <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onClose}
+              disabled={mutation.isPending}
+            >
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              {initialData ? 'Update' : 'Create'}
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending
+                ? isEditing
+                  ? 'Updating...'
+                  : 'Creating...'
+                : isEditing
+                ? 'Update'
+                : 'Create'}
             </button>
           </div>
         </form>

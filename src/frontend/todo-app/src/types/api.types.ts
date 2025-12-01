@@ -37,14 +37,8 @@ export interface CreateTodoRequest {
   location: string | null;
 }
 
-export interface UpdateTodoRequest {
-  id: number;
-  name: string;
-  dueDate: string; // ISO 8601 date string
-  notes: string | null;
-  tags: string[];
-  location: string | null;
-}
+// Update request is the same as create (id is passed separately in URL)
+export type UpdateTodoRequest = CreateTodoRequest;
 
 // ==================== Filter Types ====================
 

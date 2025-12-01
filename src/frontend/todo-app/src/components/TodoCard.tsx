@@ -1,8 +1,11 @@
 import { FaCalendar, FaMapMarkerAlt, FaTag, FaTrash } from 'react-icons/fa';
+import { useDeleteTodo } from '@/hooks/useTodoMutations';
 import { TodoCardProps } from '@/types';
 import './TodoCard.css';
 
-const TodoCard = ({ todo, onDelete }: TodoCardProps) => {
+const TodoCard = ({ todo }: TodoCardProps) => {
+  const deleteTodo = useDeleteTodo();
+
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -12,7 +15,20 @@ const TodoCard = ({ todo, onDelete }: TodoCardProps) => {
     });
   };
 
+  const handleDelete = (): void => {
+    if (!window.confirm(`Are you sure you want to delete "${todo.name}"?`)) {
+      return;
+    }
+
+    deleteTodo.mutate(todo.id, {
+      onError: (error) => {
+        alert(`Failed to delete todo: ${error.message}`);
+      },
+    });
+  };
+
   const isOverdue: boolean = new Date(todo.dueDate) < new Date();
+  const isDeleting: boolean = deleteTodo.isPending;
 
   return (
     <div className={`todo-card ${isOverdue ? 'overdue' : ''}`}>
@@ -20,8 +36,10 @@ const TodoCard = ({ todo, onDelete }: TodoCardProps) => {
         <h3>{todo.name}</h3>
         <button
           className="delete-btn"
-          onClick={() => onDelete(todo.id)}
-          title="Delete todo"
+          onClick={handleDelete}
+          disabled={isDeleting}
+          title={isDeleting ? 'Deleting...' : 'Delete todo'}
+          style={{ opacity: isDeleting ? 0.5 : 1 }}
         >
           <FaTrash />
         </button>
