@@ -36,9 +36,6 @@ export function useCreateTodo(): UseMutationResult<
       // Optionally: Add new todo to cache immediately
       queryClient.setQueryData(queryKeys.todos.detail(newTodo.id), newTodo);
     },
-    onError: (error) => {
-      console.error('Failed to create todo:', error);
-    },
   });
 }
 
@@ -96,7 +93,7 @@ export function useUpdateTodo(): UseMutationResult<
       // Invalidate lists to show updated todo
       queryClient.invalidateQueries({ queryKey: queryKeys.todos.lists() });
     },
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       // Rollback optimistic update on error
       if (context?.previousTodo) {
         queryClient.setQueryData(
@@ -104,7 +101,6 @@ export function useUpdateTodo(): UseMutationResult<
           context.previousTodo
         );
       }
-      console.error('Failed to update todo:', error);
     },
     onSettled: (_data, _error, variables) => {
       // Always refetch after mutation completes (success or error)
@@ -160,14 +156,13 @@ export function useDeleteTodo(): UseMutationResult<void, Error, number> {
       // Invalidate all lists to ensure consistency
       queryClient.invalidateQueries({ queryKey: queryKeys.todos.lists() });
     },
-    onError: (error, _id, context) => {
+    onError: (_error, _id, context) => {
       // Rollback: Restore all previous list queries
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);
         });
       }
-      console.error('Failed to delete todo:', error);
     },
   });
 }

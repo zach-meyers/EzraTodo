@@ -1,16 +1,25 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TodoApi.Data;
+using TodoApi.Filters;
+using TodoApi.Middleware;
 using TodoApi.Options;
 using TodoApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // add features to the app service container
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ValidationFilter>();
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+
+// configure FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // configure SQLite
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -50,6 +59,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseCors("TodoApp");
 app.UseAuthentication();
 app.UseAuthorization();

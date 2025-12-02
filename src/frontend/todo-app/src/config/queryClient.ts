@@ -1,4 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import { parseError } from '@/utils/errorUtils';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -11,11 +13,24 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: true, // Refetch when user returns to tab
       refetchOnReconnect: true, // Refetch when internet reconnects
       refetchOnMount: true, // Refetch when component mounts
+      // Note: Global onError for queries was removed in React Query v5
+      // Query errors are logged by the axios interceptor in api.ts
     },
     mutations: {
       // Mutations
       retry: 1, // Retry failed mutations once
       retryDelay: 1000, // Wait 1 second before retry
+      onError: (error) => {
+        // Log all mutation errors
+        console.error('Mutation error:', parseError(error));
+
+        // Show toast for network errors
+        const parsed = parseError(error);
+        if (parsed.type === 'network') {
+          toast.error('Network error. Please check your connection.');
+        }
+        // Let components handle specific error messages
+      },
     },
   },
 });

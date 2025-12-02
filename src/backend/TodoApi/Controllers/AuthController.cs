@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
 using TodoApi.DTOs;
+using TodoApi.Exceptions;
 using TodoApi.Models;
 using TodoApi.Services;
 
@@ -25,76 +26,42 @@ public class AuthController : ControllerBase
     [HttpPost("signup")]
     public async Task<ActionResult<AuthResponse>> Signup([FromBody] SignupRequest request)
     {
-        try
+        // Check if user already exists
+        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (existingUser != null)
         {
-            // Validate input
-            if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-            {
-                return BadRequest("Email and password are required");
-            }
-
-            // Check if user already exists
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-            if (existingUser != null)
-            {
-                return BadRequest("User with this email already exists");
-            }
-
-            // Create new user
-            var user = new User
-            {
-                Email = request.Email,
-                PasswordHash = _authService.HashPassword(request.Password)
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            // Generate token
-            var token = _authService.GenerateJwtToken(user);
-
-            return Ok(new AuthResponse(token, user.Email, user.Id));
+            throw new ConflictException("User with this email already exists");
         }
-        catch (Exception ex)
+
+        // Create new user
+        var user = new User
         {
-            _logger.LogError(ex, "Error during signup");
-            return StatusCode(500, "An error occurred during signup");
-        }
+            Email = request.Email,
+            PasswordHash = _authService.HashPassword(request.Password)
+        };
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        // Generate token
+        var token = _authService.GenerateJwtToken(user);
+
+        return Ok(new AuthResponse(token, user.Email, user.Id));
     }
 
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
-        try
+        // Find user
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (user == null || !_authService.VerifyPassword(request.Password, user.PasswordHash))
         {
-            // Validate input
-            if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-            {
-                return BadRequest("Email and password are required");
-            }
-
-            // Find user
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-            if (user == null)
-            {
-                return Unauthorized("Invalid email or password");
-            }
-
-            // Verify password
-            if (!_authService.VerifyPassword(request.Password, user.PasswordHash))
-            {
-                return Unauthorized("Invalid email or password");
-            }
-
-            // Generate token
-            var token = _authService.GenerateJwtToken(user);
-
-            return Ok(new AuthResponse(token, user.Email, user.Id));
+            throw new UnauthorizedException("Invalid email or password");
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during login");
-            return StatusCode(500, "An error occurred during login");
-        }
+
+        // Generate token
+        var token = _authService.GenerateJwtToken(user);
+
+        return Ok(new AuthResponse(token, user.Email, user.Id));
     }
 }

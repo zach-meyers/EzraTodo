@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaSignOutAlt, FaFilter } from 'react-icons/fa';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTodos } from '@/hooks/useTodos';
+import { getErrorMessage } from '@/utils/errorUtils';
 import TodoCard from '@/components/TodoCard';
 import TodoModal from '@/components/TodoModal';
 import { TodoFiltersExtended, TodoItemResponse } from '@/types';
@@ -160,7 +161,7 @@ const Home = () => {
         <div className="main-content">
           <div className="error">
             <h2>Error Loading Todos</h2>
-            <p>{error.message}</p>
+            <p>{getErrorMessage(error)}</p>
             <button className="btn-create" onClick={() => refetch()}>
               Retry
             </button>

@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import {
   LoginRequest,
   SignupRequest,
@@ -6,7 +6,8 @@ import {
   TodoItemResponse,
   CreateTodoRequest,
   UpdateTodoRequest,
-  TodoFilters
+  TodoFilters,
+  ErrorResponse
 } from '@/types';
 
 const API_BASE_URL = 'https://localhost:5001/api';
@@ -28,6 +29,37 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError<ErrorResponse>) => {
+    // Handle 401 - token expired
+    if (error.response?.status === 401) {
+      // Clear auth state
+      localStorage.removeItem('token');
+      // Redirect to login (if not already there)
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
+
+    // Log error to console in development
+    if (import.meta.env.DEV) {
+      console.error('API Error:', {
+        url: error.config?.url,
+        status: error.response?.status,
+        data: error.response?.data,
+        traceId: error.response?.data?.traceId
+      });
+    }
+
+    // TODO: Send to error logging service in production
+    // logErrorToService(error);
+
     return Promise.reject(error);
   }
 );

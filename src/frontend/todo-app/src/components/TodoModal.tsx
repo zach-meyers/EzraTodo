@@ -1,7 +1,9 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { FaTimes } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 import { useCreateTodo, useUpdateTodo } from '@/hooks/useTodoMutations';
 import { TodoModalProps, TodoFormData } from '@/types';
+import { parseError, getErrorMessage } from '@/utils/errorUtils';
 import './TodoModal.css';
 
 const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModalProps) => {
@@ -12,7 +14,7 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
     tags: '',
     location: '',
   });
-  const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string[]> | null>(null);
 
   // TanStack Query mutations
   const createTodo = useCreateTodo();
@@ -39,13 +41,13 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
         location: '',
       });
     }
-    // Clear error when modal opens
-    setError(null);
+    // Clear validation errors when modal opens
+    setValidationErrors(null);
   }, [initialData, isOpen]);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
-    setError(null);
+    setValidationErrors(null);
 
     const todoData = {
       name: formData.name,
@@ -67,7 +69,13 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
             onSuccess?.();
           },
           onError: (err) => {
-            setError(err.message || 'Failed to update todo');
+            const parsed = parseError(err);
+            toast.error(`Failed to update todo: ${getErrorMessage(err)}`);
+
+            // Display validation errors inline if present
+            if (parsed.validationErrors) {
+              setValidationErrors(parsed.validationErrors);
+            }
           },
         }
       );
@@ -79,7 +87,13 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
           onSuccess?.();
         },
         onError: (err) => {
-          setError(err.message || 'Failed to create todo');
+          const parsed = parseError(err);
+          toast.error(`Failed to create todo: ${getErrorMessage(err)}`);
+
+          // Display validation errors inline if present
+          if (parsed.validationErrors) {
+            setValidationErrors(parsed.validationErrors);
+          }
         },
       });
     }
@@ -162,9 +176,16 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
             />
           </div>
 
-          {error && (
-            <div className="error-message" style={{ color: 'red', marginTop: '1rem' }}>
-              {error}
+          {validationErrors && (
+            <div className="validation-errors" style={{ color: 'red', marginTop: '1rem' }}>
+              <strong>Validation Errors:</strong>
+              <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
+                {Object.entries(validationErrors).map(([field, errors]) => (
+                  <li key={field}>
+                    <strong>{field}:</strong> {errors.join(', ')}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

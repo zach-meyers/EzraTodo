@@ -1,6 +1,8 @@
 import { FaCalendar, FaMapMarkerAlt, FaTag, FaTrash, FaEdit } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 import { useDeleteTodo } from '@/hooks/useTodoMutations';
 import { TodoCardProps } from '@/types';
+import { getErrorMessage } from '@/utils/errorUtils';
 import './TodoCard.css';
 
 const TodoCard = ({ todo, onEdit }: TodoCardProps) => {
@@ -22,7 +24,7 @@ const TodoCard = ({ todo, onEdit }: TodoCardProps) => {
 
     deleteTodo.mutate(todo.id, {
       onError: (error) => {
-        alert(`Failed to delete todo: ${error.message}`);
+        toast.error(`Failed to delete "${todo.name}": ${getErrorMessage(error)}`);
       },
     });
   };
