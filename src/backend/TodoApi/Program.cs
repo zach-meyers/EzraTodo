@@ -65,11 +65,19 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ensure database is created
+// apply database migrations
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.EnsureCreated();
+
+    if (app.Environment.IsDevelopment())
+    {
+        context.Database.Migrate();
+
+        // Seed development data
+        var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
+        DbSeeder.SeedDevelopmentData(context, authService);
+    }
 }
 
 await app.RunAsync();

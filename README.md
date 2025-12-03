@@ -21,23 +21,29 @@ A modern, full-stack todo application built with React, TypeScript, Vite, .NET C
 - **Overdue Indicators**: Visual indicators with red accent for overdue todos
 - **Real-time UI Updates**: Optimistic updates with automatic rollback on errors
 - **Smart Caching**: React Query integration with 5-minute cache and background refetch
+- **Global Error Handling**: Centralized error handling with consistent error responses across the stack
+- **Database Migrations**: EF Core migrations for version-controlled schema management
 
 ## Technology Stack
 
 ### Backend
-- **.NET 10.0** - Latest .NET runtime with minimal hosting model
+- **.NET 9.0** - .NET runtime with minimal hosting model
 - **ASP.NET Core Web API** - RESTful API with modern C# features (records, nullable reference types)
-- **Entity Framework Core 9.0** - ORM with SQLite provider
-- **SQLite Database** - File-based database (`todos.db`)
+- **Entity Framework Core 9.0** - ORM with SQLite provider and code-first migrations
+- **SQLite Database** - File-based database (`todos.db`) with migration history tracking
 - **JWT Authentication** - Bearer token authentication with 24-hour expiration
 - **BCrypt.Net-Next 4.0.3** - Adaptive password hashing with automatic salting
+- **FluentValidation.AspNetCore** - Declarative validation rules with automatic model validation
 - **Microsoft.AspNetCore.OpenApi** - Automatic API documentation
 
 **Architecture Patterns:**
 - Layered architecture (Controllers → Services → Data)
+- Global exception handling middleware
+- Custom exception hierarchy for domain errors
 - Dependency injection throughout
 - DTO pattern for API contracts
 - Options pattern for configuration
+- Validation filter for automatic input validation
 - Repository pattern (directly on DbContext for simplicity)
 
 ### Frontend
@@ -46,8 +52,9 @@ A modern, full-stack todo application built with React, TypeScript, Vite, .NET C
 - **Vite 7.2.4** - Fast build tool and dev server
 - **TanStack Query 5.90.11** (React Query) - Server state management with caching
 - **React Router 7.9.6** - Client-side routing with route guards
-- **Axios 1.13.2** - HTTP client with request interceptors
+- **Axios 1.13.2** - HTTP client with request/response interceptors
 - **React Icons 5.5.0** - Icon library (Font Awesome)
+- **react-hot-toast** - Toast notifications for user feedback
 - **jwt-decode 4.0.0** - JWT token parsing
 
 **Architecture Patterns:**
@@ -55,6 +62,9 @@ A modern, full-stack todo application built with React, TypeScript, Vite, .NET C
 - Custom hooks for logic reuse
 - Context API for authentication
 - Optimistic updates with React Query
+- Error boundaries for component error catching
+- Centralized error parsing utilities
+- Axios interceptors for cross-cutting concerns
 - Centralized type definitions
 - Path aliases for clean imports
 
@@ -66,9 +76,14 @@ src/
 │   └── TodoApi/
 │       ├── Controllers/      # API controllers
 │       ├── Models/           # Database models
-│       ├── Data/             # DbContext
+│       ├── Data/             # DbContext and database seeder
 │       ├── DTOs/             # Data transfer objects
 │       ├── Services/         # Business logic services
+│       ├── Exceptions/       # Custom exception types
+│       ├── Middleware/       # Global exception handler
+│       ├── Validators/       # FluentValidation validators
+│       ├── Filters/          # Validation action filter
+│       ├── Migrations/       # EF Core migration files
 │       └── Program.cs        # Application entry point
 └── frontend/
     └── todo-app/
@@ -76,7 +91,11 @@ src/
             ├── components/   # Reusable React components
             ├── pages/        # Page components
             ├── contexts/     # React contexts (Auth)
-            └── services/     # API service layer
+            ├── services/     # API service layer
+            ├── hooks/        # Custom React hooks
+            ├── utils/        # Utility functions (error parsing)
+            ├── config/       # Configuration (query client)
+            └── types/        # TypeScript type definitions
 ```
 
 ## Getting Started
@@ -148,29 +167,60 @@ src/
 
 ## Database
 
-The application uses SQLite for data storage. The database file (`todos.db`) is automatically created in the backend directory when you first run the application.
+The application uses SQLite for data storage with Entity Framework Core migrations for schema management. The database file (`todos.db`) is automatically created and migrated when you first run the application in development mode.
+
+### Database Migrations
+
+The project uses EF Core migrations for version-controlled schema management:
+
+**Development:**
+- Migrations apply automatically on application startup
+- Includes development seed data (test user with sample todos)
+
+**Production:**
+- Apply migrations manually before deployment:
+  ```bash
+  cd src/backend/TodoApi
+  dotnet ef database update
+  ```
+
+**Creating New Migrations:**
+```bash
+cd src/backend/TodoApi
+dotnet ef migrations add MigrationName
+```
+
+**Development Seed Data:**
+- **Test User**: `test@example.com` / `Test123!`
+- **Sample Todos**: 2 pre-populated todos with tags
+- Seed data only loads in Development environment
 
 ### Database Schema
 
 **Users Table**
-- Id (Primary Key)
-- Email (Unique)
+- Id (Primary Key, auto-increment)
+- Email (Unique index)
 - PasswordHash
 - CreatedAt
 
 **TodoItems Table**
-- Id (Primary Key)
-- UserId (Foreign Key)
-- Name
-- DueDate
-- Notes
-- Location
+- Id (Primary Key, auto-increment)
+- UserId (Foreign Key → Users, CASCADE delete)
+- Name (required)
+- DueDate (required)
+- Notes (optional)
+- Location (optional)
 - CreatedDate
 
 **TodoItemTags Table**
-- Id (Primary Key)
-- TodoItemId (Foreign Key)
-- Tag
+- Id (Primary Key, auto-increment)
+- TodoItemId (Foreign Key → TodoItems, CASCADE delete)
+- Tag (required)
+
+**__EFMigrationsHistory Table**
+- MigrationId (Primary Key)
+- ProductVersion
+- Tracks applied migrations for version control
 
 ## Security Features
 
@@ -185,8 +235,9 @@ The application uses SQLite for data storage. The database file (`todos.db`) is 
 - **CORS Configuration**: Restricted to localhost origins (development)
 - **HTTPS Redirection**: Enforced in middleware pipeline
 - **SQL Injection Protection**: Parameterized queries via Entity Framework Core
-- **Input Validation**: Manual validation in controllers (required fields, format checks)
-- **Error Information Disclosure**: Generic error messages to clients, detailed logging server-side
+- **Input Validation**: FluentValidation with automatic validation filter
+- **Error Information Disclosure**: Structured error responses with trace IDs, generic 500 errors in production
+- **Global Exception Handler**: Centralized error handling prevents information leakage
 
 ### Token Flow
 1. Login/Signup → JWT generated with user claims
@@ -237,11 +288,22 @@ The production build will be in the `dist` folder.
 
 ### Backend Architecture
 
-**Layered Design:**
+**Request Pipeline:**
 ```
 HTTP Request
     ↓
+Middleware Pipeline
+    ├── HTTPS Redirection
+    ├── Global Exception Handler ← Catches all unhandled exceptions
+    ├── CORS
+    ├── Authentication
+    └── Authorization
+    ↓
+Validation Filter ← Validates request models, throws ValidationException
+    ↓
 Controllers (AuthController, TodosController)
+    ├── Throw domain exceptions (NotFoundException, ConflictException, etc.)
+    └── No try-catch blocks (exceptions bubble to middleware)
     ↓
 Services (IAuthService, AuthService)
     ↓
@@ -251,17 +313,23 @@ Database (SQLite - todos.db)
 ```
 
 **Key Components:**
-- **Controllers**: Handle HTTP requests, validation, and responses
+- **Controllers**: Handle HTTP requests, throw domain exceptions (no try-catch)
 - **Services**: Business logic (password hashing, JWT generation)
+- **Middleware**: Global exception handler catches and transforms errors
+- **Filters**: Validation filter intercepts invalid models
+- **Validators**: FluentValidation rules for automatic validation
+- **Exceptions**: Custom exception hierarchy (AppException, NotFoundException, etc.)
 - **DTOs**: Data transfer objects separate API contracts from database models
 - **Models**: Entity Framework entities (User, TodoItem, TodoItemTag)
-- **DbContext**: Database configuration with Fluent API
+- **DbContext**: Database configuration with Fluent API and migrations
 
 **Design Patterns:**
 - Dependency Injection (built-in ASP.NET Core container)
 - Options Pattern (type-safe configuration binding)
 - DTO Pattern (prevents over-posting, maintains API contracts)
 - Record Types (immutable DTOs with value-based equality)
+- Exception Middleware Pattern (centralized error handling)
+- Custom Exception Hierarchy (domain-specific errors)
 
 ### Frontend Architecture
 
@@ -329,6 +397,137 @@ App (Routing + AuthProvider)
 - Full replacement: Delete all existing tags + Insert new tags
 - Simpler than diff algorithm, no orphaned tags
 
+## Error Handling Architecture
+
+### Backend Error Handling
+
+**Custom Exception Hierarchy:**
+```
+AppException (abstract base)
+    ├── NotFoundException (404)
+    ├── ValidationException (400 with field errors)
+    ├── ConflictException (409)
+    └── UnauthorizedException (401)
+```
+
+**Global Exception Handler Middleware:**
+- Catches all unhandled exceptions in the pipeline
+- Maps exceptions to appropriate HTTP status codes
+- Returns consistent `ErrorResponse` structure
+- Logs errors with context (trace ID, user ID, request path)
+- Includes stack traces in development, generic messages in production
+
+**ErrorResponse Structure:**
+```json
+{
+  "traceId": "0HMVFE5H3O8GD:00000001",
+  "statusCode": 400,
+  "errorCode": "VALIDATION_ERROR",
+  "message": "Validation failed",
+  "details": "Stack trace (dev only)",
+  "validationErrors": {
+    "Name": ["Name is required"],
+    "Email": ["Invalid email format"]
+  },
+  "timestamp": "2025-12-03T14:45:13.123Z"
+}
+```
+
+**FluentValidation Integration:**
+- Declarative validation rules in validator classes
+- Automatic validation via `ValidationFilter` action filter
+- Throws `ValidationException` when model state is invalid
+- No manual validation in controllers (40% code reduction)
+
+**Exception Mapping:**
+- `AppException` → Uses StatusCode and ErrorCode from exception
+- `ValidationException` → 400 with field-level errors
+- `DbUpdateException` → 409 or 500 depending on inner exception
+- `UnauthorizedAccessException` → 401
+- `ArgumentException`, `FormatException` → 400
+- All others → 500 INTERNAL_SERVER_ERROR
+
+**Logging Strategy:**
+- 4xx errors → `LogWarning` (client errors)
+- 5xx errors → `LogError` with full exception details
+- Includes trace ID for correlation with frontend logs
+
+### Frontend Error Handling
+
+**Multi-Layer Error Catching:**
+```
+Component Errors → Error Boundary → Fallback UI
+API Errors → Axios Interceptor → Error Parser → Toast/State
+Mutation Errors → React Query onError → Toast Notification
+```
+
+**Error Boundaries:**
+- `ErrorBoundary` - App-level boundary prevents crashes
+- `RouteErrorBoundary` - Route-specific boundaries with "Try Again" functionality
+- Displays error details in development, user-friendly messages in production
+
+**Axios Response Interceptor:**
+- Catches 401 errors → Clears auth token → Redirects to login
+- Logs errors to console in development
+- Prepares for production error logging service integration
+
+**Error Parsing Utilities:**
+```typescript
+parseError(error: unknown): ParsedError {
+  type: 'network' | 'auth' | 'validation' | 'notFound' | 'server' | 'unknown'
+  message: string
+  statusCode?: number
+  errorCode?: string
+  traceId?: string
+  validationErrors?: Record<string, string[]>
+}
+```
+
+**React Query Global Error Handlers:**
+- Mutation errors → Automatic toast notification for network errors
+- Query errors → Logged to console for debugging
+- Component-specific handlers can override global behavior
+
+**Toast Notifications:**
+- `react-hot-toast` for user-friendly error messages
+- Network errors → "Network error. Please check your connection."
+- Validation errors → Field-specific messages displayed inline
+- Generic errors → Extracted message from ErrorResponse
+
+**Error Flow Example:**
+1. User submits invalid todo → FluentValidation fails
+2. ValidationFilter throws `ValidationException`
+3. GlobalExceptionHandler catches, creates ErrorResponse with trace ID
+4. Frontend receives 400 with validation errors
+5. parseError() extracts field-level errors
+6. Toast shows "Failed to create todo: Validation failed"
+7. Validation errors displayed inline next to form fields
+8. User corrects errors and resubmits
+
+### Benefits of Global Error Handling
+
+**Code Reduction:**
+- Eliminated 7 try-catch blocks from controllers (~40% code reduction)
+- Removed console.error calls from React components
+- Centralized error logic reduces duplication
+
+**Consistency:**
+- All errors follow the same ErrorResponse structure
+- Trace IDs connect frontend and backend logs
+- Predictable error messages across the application
+
+**Developer Experience:**
+- Trace IDs make debugging easier
+- Structured logging with context
+- Error boundaries prevent app crashes
+- Development-mode error details
+
+**User Experience:**
+- Toast notifications for transient errors
+- Field-level validation errors
+- Automatic retry with exponential backoff
+- No exposed stack traces or technical details
+
 ## Performance Optimizations
 
 ### Caching Strategy (React Query)
@@ -377,10 +576,13 @@ App (Routing + AuthProvider)
 - Type-safe query keys with `as const`
 
 ### Error Handling
-- Try-catch blocks in all async operations
-- Structured error responses (400, 401, 404, 500)
-- User-friendly messages with detailed logging
+- Global exception handler middleware (no try-catch in controllers)
+- Custom exception hierarchy for domain errors
+- Structured error responses with trace IDs (400, 401, 404, 409, 500)
+- Error boundaries prevent React app crashes
+- Toast notifications for user feedback
 - Automatic retry with exponential backoff
+- Field-level validation errors displayed inline
 
 ### Code Organization
 - Domain-driven file structure
@@ -399,20 +601,16 @@ App (Routing + AuthProvider)
 1. No pagination (loads all todos at once)
 2. Client-side filtering (works well for small datasets)
 3. No refresh token mechanism
-4. No database migrations (uses `EnsureCreated()`)
-5. No unit tests or integration tests
-6. No email verification on signup
-7. No password reset functionality
-8. No user profile management
-9. No todo sharing or collaboration features
-10. No due date reminders or notifications
+4. No unit tests or integration tests
+5. No email verification on signup
+6. No password reset functionality
+7. No user profile management
+8. No todo sharing or collaboration features
+9. No due date reminders or notifications
 
 ### Potential Improvements
 1. **Pagination**: Add server-side pagination for large datasets
-2. **Global Exception Handler**: Replace repetitive try-catch blocks
-3. **FluentValidation**: Replace manual validation with library
-4. **Entity Framework Migrations**: Better production deployment
-5. **Repository Pattern**: Add abstraction if app grows
+2. **Repository Pattern**: Add abstraction if app grows
 6. **Unit Testing**: Backend services and controllers
 7. **E2E Testing**: Frontend user flows with Playwright/Cypress
 8. **API Versioning**: Prepare for future changes
@@ -427,21 +625,37 @@ App (Routing + AuthProvider)
 ## File Reference Guide
 
 ### Backend Key Files
-- `Program.cs` - Application entry point, middleware configuration
-- `Controllers/AuthController.cs` - Login, signup endpoints
-- `Controllers/TodosController.cs` - CRUD operations for todos
+- `Program.cs` - Application entry point, middleware configuration, migration setup
+- `Controllers/AuthController.cs` - Login, signup endpoints (no try-catch blocks)
+- `Controllers/TodosController.cs` - CRUD operations for todos (no try-catch blocks)
 - `Services/AuthService.cs` - Password hashing, JWT generation
-- `Data/AppDbContext.cs` - Entity Framework configuration
+- `Data/AppDbContext.cs` - Entity Framework configuration with Fluent API
+- `Data/DbSeeder.cs` - Development seed data
 - `Models/` - Database entities
 - `DTOs/` - API request/response objects
+- `Exceptions/AppException.cs` - Base exception class
+- `Exceptions/NotFoundException.cs` - 404 errors
+- `Exceptions/ValidationException.cs` - 400 validation errors with field details
+- `Exceptions/ConflictException.cs` - 409 conflict errors
+- `Exceptions/UnauthorizedException.cs` - 401 auth errors
+- `Middleware/GlobalExceptionHandlerMiddleware.cs` - Centralized error handling
+- `Filters/ValidationFilter.cs` - Automatic model validation
+- `Validators/` - FluentValidation validator classes
+- `Migrations/` - EF Core migration files
 
 ### Frontend Key Files
-- `App.tsx` - Root component with routing and route guards
+- `App.tsx` - Root component with routing, route guards, and error boundaries
+- `main.tsx` - App entry point with top-level ErrorBoundary
 - `contexts/AuthContext.tsx` - Authentication state management
 - `hooks/useTodos.ts` - Query hooks for fetching todos
 - `hooks/useTodoMutations.ts` - Mutation hooks with optimistic updates
-- `services/api.ts` - Axios configuration and API methods
+- `services/api.ts` - Axios configuration with response interceptor
+- `utils/errorUtils.ts` - Error parsing utilities
+- `types/error.types.ts` - Error response type definitions
 - `types/` - TypeScript type definitions
+- `config/queryClient.ts` - React Query configuration with global error handlers
 - `pages/Home.tsx` - Main todo list page with filtering
-- `components/TodoModal.tsx` - Create/edit modal form
-- `components/TodoCard.tsx` - Individual todo display
+- `components/TodoModal.tsx` - Create/edit modal form with validation error display
+- `components/TodoCard.tsx` - Individual todo display with toast notifications
+- `components/ErrorBoundary.tsx` - App-level error boundary
+- `components/RouteErrorBoundary.tsx` - Route-specific error boundary
