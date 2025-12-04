@@ -1,3 +1,4 @@
+using TodoApi.Data.Entities;
 using TodoApi.Models;
 using TodoApi.Services;
 
@@ -9,9 +10,7 @@ public static class DbSeeder
     {
         // Only seed if database is empty
         if (context.Users.Any())
-        {
             return;
-        }
 
         // Create test user
         var testUser = new User
@@ -46,7 +45,7 @@ public static class DbSeeder
         context.TodoItems.AddRange(todo1, todo2);
         context.SaveChanges();
 
-        // Create sample tags
+        // Create sample tags for todos
         var tags = new[]
         {
             new TodoItemTag { TodoItemId = todo1.Id, Tag = "work" },

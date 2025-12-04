@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import {
   LoginRequest,
   SignupRequest,
@@ -7,22 +7,22 @@ import {
   CreateTodoRequest,
   UpdateTodoRequest,
   TodoFilters,
-  ErrorResponse
-} from '@/types';
+  ErrorResponse,
+} from "@/types";
 
-const API_BASE_URL = 'https://localhost:5001/api';
+const API_BASE_URL = "https://localhost:5001/api";
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Add token to requests if it exists
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -40,20 +40,20 @@ api.interceptors.response.use(
     // Handle 401 - token expired
     if (error.response?.status === 401) {
       // Clear auth state
-      localStorage.removeItem('token');
+      localStorage.removeItem("token");
       // Redirect to login (if not already there)
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = "/login";
       }
     }
 
     // Log error to console in development
     if (import.meta.env.DEV) {
-      console.error('API Error:', {
+      console.error("API Error:", {
         url: error.config?.url,
         status: error.response?.status,
         data: error.response?.data,
-        traceId: error.response?.data?.traceId
+        traceId: error.response?.data?.traceId,
       });
     }
 
@@ -68,41 +68,46 @@ api.interceptors.response.use(
 export const authAPI = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     const request: LoginRequest = { email, password };
-    const response = await api.post<AuthResponse>('/auth/login', request);
+    const response = await api.post<AuthResponse>("/auth/login", request);
     return response.data;
   },
 
   signup: async (email: string, password: string): Promise<AuthResponse> => {
     const request: SignupRequest = { email, password };
-    const response = await api.post<AuthResponse>('/auth/signup', request);
+    const response = await api.post<AuthResponse>("/auth/signup", request);
     return response.data;
   },
 };
 
-// Todos API
-export const todosAPI = {
+// Todo API
+export const todoAPI = {
   getAll: async (filters: TodoFilters = {}): Promise<TodoItemResponse[]> => {
-    const response = await api.get<TodoItemResponse[]>('/todos', { params: filters });
+    const response = await api.get<TodoItemResponse[]>("/todo", {
+      params: filters,
+    });
     return response.data;
   },
 
   getById: async (id: number): Promise<TodoItemResponse> => {
-    const response = await api.get<TodoItemResponse>(`/todos/${id}`);
+    const response = await api.get<TodoItemResponse>(`/todo/${id}`);
     return response.data;
   },
 
   create: async (todo: CreateTodoRequest): Promise<TodoItemResponse> => {
-    const response = await api.post<TodoItemResponse>('/todos', todo);
+    const response = await api.post<TodoItemResponse>("/todo", todo);
     return response.data;
   },
 
   update: async (id: number, todo: UpdateTodoRequest): Promise<TodoItemResponse> => {
-    const response = await api.put<TodoItemResponse>(`/todos/${id}`, { ...todo, id });
+    const response = await api.put<TodoItemResponse>(`/todo/${id}`, {
+      ...todo,
+      id,
+    });
     return response.data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/todos/${id}`);
+    await api.delete(`/todo/${id}`);
   },
 };
 

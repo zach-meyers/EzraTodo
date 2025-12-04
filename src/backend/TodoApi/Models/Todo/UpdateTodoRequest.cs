@@ -1,15 +1,19 @@
 using FluentValidation;
-using TodoApi.DTOs;
 
-namespace TodoApi.Validators;
+namespace TodoApi.Models.Todo;
+
+public record UpdateTodoRequest(
+    string Name,
+    DateTime DueDate,
+    string? Notes,
+    List<string>? Tags,
+    string? Location
+);
 
 public class UpdateTodoRequestValidator : AbstractValidator<UpdateTodoRequest>
 {
     public UpdateTodoRequestValidator()
     {
-        RuleFor(x => x.Id)
-            .GreaterThan(0).WithMessage("Invalid todo ID");
-
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Name is required")
             .MaximumLength(200).WithMessage("Name must not exceed 200 characters");

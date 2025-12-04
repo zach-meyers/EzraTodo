@@ -1,10 +1,10 @@
-using TodoApi.Models;
+using TodoApi.Models.Auth;
 
 namespace TodoApi.Services;
 
 public interface IAuthService
 {
-    string GenerateJwtToken(User user);
-    string HashPassword(string password);
-    bool VerifyPassword(string password, string passwordHash);
+    Task<AuthResponse> Signup(SignupRequest request);
+    Task<AuthResponse> Login(LoginRequest request);
+    internal string HashPassword(string password);
 }

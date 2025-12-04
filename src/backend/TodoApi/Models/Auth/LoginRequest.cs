@@ -1,7 +1,8 @@
 using FluentValidation;
-using TodoApi.DTOs;
 
-namespace TodoApi.Validators;
+namespace TodoApi.Models.Auth;
+
+public record LoginRequest(string Email, string Password);
 
 public class LoginRequestValidator : AbstractValidator<LoginRequest>
 {

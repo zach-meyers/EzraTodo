@@ -6,15 +6,15 @@ using TodoApi.Models;
 
 namespace TodoApi.Middleware;
 
-public class GlobalExceptionHandlerMiddleware
+public class ExceptionHandlerMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<GlobalExceptionHandlerMiddleware> _logger;
+    private readonly ILogger<ExceptionHandlerMiddleware> _logger;
     private readonly IWebHostEnvironment _environment;
 
-    public GlobalExceptionHandlerMiddleware(
+    public ExceptionHandlerMiddleware(
         RequestDelegate next,
-        ILogger<GlobalExceptionHandlerMiddleware> logger,
+        ILogger<ExceptionHandlerMiddleware> logger,
         IWebHostEnvironment environment)
     {
         _next = next;
@@ -80,11 +80,13 @@ public class GlobalExceptionHandlerMiddleware
                         context.Request.Path
                     );
                 }
+
                 break;
 
             case DbUpdateException dbException:
                 // Check if it's a unique constraint violation or other database error
-                var isUniqueConstraintViolation = dbException.InnerException?.Message.Contains("UNIQUE constraint") ?? false;
+                var isUniqueConstraintViolation =
+                    dbException.InnerException?.Message.Contains("UNIQUE constraint") ?? false;
 
                 if (isUniqueConstraintViolation)
                 {
@@ -158,14 +160,7 @@ public class GlobalExceptionHandlerMiddleware
         // Set response
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = errorResponse.StatusCode;
-
-        var jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = _environment.IsDevelopment()
-        };
-
-        var json = JsonSerializer.Serialize(errorResponse, jsonOptions);
+        var json = JsonSerializer.Serialize(errorResponse);
         await context.Response.WriteAsync(json);
     }
 }

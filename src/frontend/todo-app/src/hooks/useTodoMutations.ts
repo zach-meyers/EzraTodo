@@ -1,7 +1,7 @@
-import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-query';
-import { todosAPI } from '@/services/api';
-import { queryKeys } from '@/config/queryKeys';
-import { TodoItemResponse, CreateTodoRequest, UpdateTodoRequest } from '@/types';
+import { useMutation, useQueryClient, UseMutationResult } from "@tanstack/react-query";
+import { todoAPI } from "@/services/api";
+import { queryKeys } from "@/config/queryKeys";
+import { TodoItemResponse, CreateTodoRequest, UpdateTodoRequest } from "@/types";
 
 /**
  * Create a new todo with automatic cache invalidation
@@ -20,21 +20,17 @@ import { TodoItemResponse, CreateTodoRequest, UpdateTodoRequest } from '@/types'
  *   onError: (error) => showToast(error.message),
  * });
  */
-export function useCreateTodo(): UseMutationResult<
-  TodoItemResponse,
-  Error,
-  CreateTodoRequest
-> {
+export function useCreateTodo(): UseMutationResult<TodoItemResponse, Error, CreateTodoRequest> {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (todo: CreateTodoRequest) => todosAPI.create(todo),
+    mutationFn: (todo: CreateTodoRequest) => todoAPI.create(todo),
     onSuccess: (newTodo) => {
       // Invalidate all todo lists so they refetch with new todo
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.todo.lists() });
 
       // Optionally: Add new todo to cache immediately
-      queryClient.setQueryData(queryKeys.todos.detail(newTodo.id), newTodo);
+      queryClient.setQueryData(queryKeys.todo.detail(newTodo.id), newTodo);
     },
   });
 }
@@ -53,31 +49,25 @@ export function useCreateTodo(): UseMutationResult<
  * const updateTodo = useUpdateTodo();
  * updateTodo.mutate({ id: 5, todo: updatedData });
  */
-export function useUpdateTodo(): UseMutationResult<
-  TodoItemResponse,
-  Error,
-  { id: number; todo: UpdateTodoRequest }
-> {
+export function useUpdateTodo(): UseMutationResult<TodoItemResponse, Error, { id: number; todo: UpdateTodoRequest }> {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, todo }) => todosAPI.update(id, todo),
+    mutationFn: ({ id, todo }) => todoAPI.update(id, todo),
     // Optimistic update: Update UI immediately before server responds
     onMutate: async ({ id, todo }) => {
       // Cancel outgoing refetches so they don't overwrite optimistic update
-      await queryClient.cancelQueries({ queryKey: queryKeys.todos.detail(id) });
+      await queryClient.cancelQueries({ queryKey: queryKeys.todo.detail(id) });
 
       // Snapshot previous value for rollback
-      const previousTodo = queryClient.getQueryData<TodoItemResponse>(
-        queryKeys.todos.detail(id)
-      );
+      const previousTodo = queryClient.getQueryData<TodoItemResponse>(queryKeys.todo.detail(id));
 
       // Optimistically update to new value
       if (previousTodo) {
-        queryClient.setQueryData<TodoItemResponse>(
-          queryKeys.todos.detail(id),
-          { ...previousTodo, ...todo }
-        );
+        queryClient.setQueryData<TodoItemResponse>(queryKeys.todo.detail(id), {
+          ...previousTodo,
+          ...todo,
+        });
       }
 
       // Return context with snapshot
@@ -85,27 +75,21 @@ export function useUpdateTodo(): UseMutationResult<
     },
     onSuccess: (updatedTodo) => {
       // Update the specific todo in cache
-      queryClient.setQueryData(
-        queryKeys.todos.detail(updatedTodo.id),
-        updatedTodo
-      );
+      queryClient.setQueryData(queryKeys.todo.detail(updatedTodo.id), updatedTodo);
 
       // Invalidate lists to show updated todo
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.todo.lists() });
     },
     onError: (_error, variables, context) => {
       // Rollback optimistic update on error
       if (context?.previousTodo) {
-        queryClient.setQueryData(
-          queryKeys.todos.detail(variables.id),
-          context.previousTodo
-        );
+        queryClient.setQueryData(queryKeys.todo.detail(variables.id), context.previousTodo);
       }
     },
     onSettled: (_data, _error, variables) => {
       // Always refetch after mutation completes (success or error)
       queryClient.invalidateQueries({
-        queryKey: queryKeys.todos.detail(variables.id),
+        queryKey: queryKeys.todo.detail(variables.id),
       });
     },
   });
@@ -130,31 +114,28 @@ export function useDeleteTodo(): UseMutationResult<void, Error, number> {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => todosAPI.delete(id),
+    mutationFn: (id: number) => todoAPI.delete(id),
     // Optimistic update: Remove from UI immediately
     onMutate: async (id) => {
       // Cancel queries to prevent overwrites
-      await queryClient.cancelQueries({ queryKey: queryKeys.todos.lists() });
+      await queryClient.cancelQueries({ queryKey: queryKeys.todo.lists() });
 
       // Snapshot all list queries
       const previousQueries = queryClient.getQueriesData<TodoItemResponse[]>({
-        queryKey: queryKeys.todos.lists(),
+        queryKey: queryKeys.todo.lists(),
       });
 
       // Optimistically remove todo from all lists
-      queryClient.setQueriesData<TodoItemResponse[]>(
-        { queryKey: queryKeys.todos.lists() },
-        (old) => old?.filter((todo) => todo.id !== id)
-      );
+      queryClient.setQueriesData<TodoItemResponse[]>({ queryKey: queryKeys.todo.lists() }, (old) => old?.filter((todo) => todo.id !== id));
 
       return { previousQueries };
     },
     onSuccess: (_, id) => {
       // Remove todo detail from cache
-      queryClient.removeQueries({ queryKey: queryKeys.todos.detail(id) });
+      queryClient.removeQueries({ queryKey: queryKeys.todo.detail(id) });
 
       // Invalidate all lists to ensure consistency
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.todo.lists() });
     },
     onError: (_error, _id, context) => {
       // Rollback: Restore all previous list queries

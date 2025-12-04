@@ -1,7 +1,14 @@
 using FluentValidation;
-using TodoApi.DTOs;
 
-namespace TodoApi.Validators;
+namespace TodoApi.Models.Todo;
+
+public record CreateTodoRequest(
+    string Name,
+    DateTime DueDate,
+    string? Notes,
+    List<string>? Tags,
+    string? Location
+);
 
 public class CreateTodoRequestValidator : AbstractValidator<CreateTodoRequest>
 {

@@ -1,7 +1,7 @@
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
-import { todosAPI } from '@/services/api';
-import { queryKeys } from '@/config/queryKeys';
-import { TodoItemResponse, TodoFilters } from '@/types';
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { todoAPI } from "@/services/api";
+import { queryKeys } from "@/config/queryKeys";
+import { TodoItemResponse, TodoFilters } from "@/types";
 
 /**
  * Fetch all todos with optional filters
@@ -19,12 +19,10 @@ import { TodoItemResponse, TodoFilters } from '@/types';
  * @example
  * const { data: todos, isLoading, error } = useTodos({ tag: 'work' });
  */
-export function useTodos(
-  filters?: TodoFilters
-): UseQueryResult<TodoItemResponse[], Error> {
+export function useTodos(filters?: TodoFilters): UseQueryResult<TodoItemResponse[], Error> {
   return useQuery({
-    queryKey: queryKeys.todos.list(filters),
-    queryFn: () => todosAPI.getAll(filters),
+    queryKey: queryKeys.todo.list(filters),
+    queryFn: () => todoAPI.getAll(filters),
     // staleTime inherited from global config (5 minutes)
     // Auto-refetch inherited from global config
   });
@@ -41,13 +39,10 @@ export function useTodos(
  * @example
  * const { data: todo } = useTodo(5, { enabled: isModalOpen });
  */
-export function useTodo(
-  id: number | null,
-  options?: { enabled?: boolean }
-): UseQueryResult<TodoItemResponse, Error> {
+export function useTodo(id: number | null, options?: { enabled?: boolean }): UseQueryResult<TodoItemResponse, Error> {
   return useQuery({
-    queryKey: queryKeys.todos.detail(id!),
-    queryFn: () => todosAPI.getById(id!),
+    queryKey: queryKeys.todo.detail(id!),
+    queryFn: () => todoAPI.getById(id!),
     enabled: id !== null && (options?.enabled ?? true), // Only run if ID exists and enabled
     staleTime: 10 * 60 * 1000, // 10 minutes for individual todos (less likely to change)
   });
