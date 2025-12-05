@@ -2,7 +2,7 @@ import { useState, useMemo, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaSignOutAlt, FaFilter } from 'react-icons/fa';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTodos } from '@/hooks/useTodos';
+import { useTodos } from '@/hooks/useTodoQueries';
 import { getErrorMessage } from '@/utils/errorUtils';
 import TodoCard from '@/components/TodoCard';
 import TodoModal from '@/components/TodoModal';
@@ -26,13 +26,7 @@ const Home = () => {
   const navigate = useNavigate();
 
   // Query hook - automatic loading, error, and data management
-  const {
-    data: todos = [],
-    isLoading,
-    isError,
-    error,
-    refetch
-  } = useTodos();
+  const { data: todos = [], isLoading, isError, error, refetch } = useTodos();
 
   // Client-side filtering with useMemo for performance
   const filteredTodos = useMemo(() => {
@@ -42,7 +36,7 @@ const Home = () => {
     if (filters.searchTerm) {
       const search = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(
-        todo =>
+        (todo) =>
           todo.name.toLowerCase().includes(search) ||
           todo.notes?.toLowerCase().includes(search) ||
           todo.location?.toLowerCase().includes(search)
@@ -51,33 +45,23 @@ const Home = () => {
 
     // Due date filters
     if (filters.dueDateFrom) {
-      filtered = filtered.filter(
-        (todo) => new Date(todo.dueDate) >= new Date(filters.dueDateFrom!)
-      );
+      filtered = filtered.filter((todo) => new Date(todo.dueDate) >= new Date(filters.dueDateFrom!));
     }
     if (filters.dueDateTo) {
-      filtered = filtered.filter(
-        (todo) => new Date(todo.dueDate) <= new Date(filters.dueDateTo!)
-      );
+      filtered = filtered.filter((todo) => new Date(todo.dueDate) <= new Date(filters.dueDateTo!));
     }
 
     // Created date filters
     if (filters.createdDateFrom) {
-      filtered = filtered.filter(
-        (todo) => new Date(todo.createdDate) >= new Date(filters.createdDateFrom!)
-      );
+      filtered = filtered.filter((todo) => new Date(todo.createdDate) >= new Date(filters.createdDateFrom!));
     }
     if (filters.createdDateTo) {
-      filtered = filtered.filter(
-        (todo) => new Date(todo.createdDate) <= new Date(filters.createdDateTo!)
-      );
+      filtered = filtered.filter((todo) => new Date(todo.createdDate) <= new Date(filters.createdDateTo!));
     }
 
     // Tag filter
     if (filters.tag) {
-      filtered = filtered.filter((todo) =>
-        todo.tags?.some((tag) => tag.toLowerCase().includes(filters.tag!.toLowerCase()))
-      );
+      filtered = filtered.filter((todo) => todo.tags?.some((tag) => tag.toLowerCase().includes(filters.tag!.toLowerCase())));
     }
 
     // Sort by due date
@@ -192,23 +176,15 @@ const Home = () => {
               type="text"
               placeholder="Search todos..."
               value={filters.searchTerm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                handleFilterChange('searchTerm', e.target.value)
-              }
+              onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('searchTerm', e.target.value)}
             />
           </div>
 
           <div className="header-actions">
-            <button
-              className="btn-filter"
-              onClick={() => setShowFilters(!showFilters)}
-            >
+            <button className="btn-filter" onClick={() => setShowFilters(!showFilters)}>
               <FaFilter /> Filters
             </button>
-            <button
-              className="btn-create"
-              onClick={handleCreateTodo}
-            >
+            <button className="btn-create" onClick={handleCreateTodo}>
               <FaPlus /> New Todo
             </button>
           </div>
@@ -222,9 +198,7 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.dueDateFrom}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('dueDateFrom', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('dueDateFrom', e.target.value)}
                 />
               </div>
 
@@ -233,9 +207,7 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.dueDateTo}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('dueDateTo', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('dueDateTo', e.target.value)}
                 />
               </div>
 
@@ -244,9 +216,7 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.createdDateFrom}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('createdDateFrom', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('createdDateFrom', e.target.value)}
                 />
               </div>
 
@@ -255,9 +225,7 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.createdDateTo}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('createdDateTo', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('createdDateTo', e.target.value)}
                 />
               </div>
 
@@ -267,9 +235,7 @@ const Home = () => {
                   type="text"
                   placeholder="Filter by tag..."
                   value={filters.tag}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('tag', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('tag', e.target.value)}
                 />
               </div>
             </div>
@@ -289,11 +255,7 @@ const Home = () => {
         {filteredTodos.length === 0 ? (
           <div className="empty-state">
             <h2>No todos found</h2>
-            <p>
-              {todos.length === 0
-                ? 'Create your first todo to get started!'
-                : 'Try adjusting your filters or search term.'}
-            </p>
+            <p>{todos.length === 0 ? 'Create your first todo to get started!' : 'Try adjusting your filters or search term.'}</p>
             {todos.length === 0 && (
               <button className="btn-create" onClick={handleCreateTodo}>
                 <FaPlus /> Create Todo
@@ -309,11 +271,7 @@ const Home = () => {
         )}
       </div>
 
-      <TodoModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        initialData={editingTodo}
-      />
+      <TodoModal isOpen={isModalOpen} onClose={handleCloseModal} initialData={editingTodo} />
     </div>
   );
 };

@@ -15,12 +15,18 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      height: '100vh'
-    }}>Loading...</div>;
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+        }}
+      >
+        Loading...
+      </div>
+    );
   }
 
   return user ? <>{children}</> : <Navigate to="/login" replace />;
@@ -34,12 +40,18 @@ const PublicRoute = ({ children }: PublicRouteProps) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      height: '100vh'
-    }}>Loading...</div>;
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+        }}
+      >
+        Loading...
+      </div>
+    );
   }
 
   return user ? <Navigate to="/" replace /> : <>{children}</>;
@@ -53,7 +65,7 @@ function App() {
         toastOptions={{
           duration: 4000,
           error: { duration: 5000 },
-          success: { duration: 3000 }
+          success: { duration: 3000 },
         }}
       />
       <AuthProvider>

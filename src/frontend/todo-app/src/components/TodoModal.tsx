@@ -54,7 +54,10 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
       dueDate: new Date(formData.dueDate).toISOString(),
       notes: formData.notes || null,
       tags: formData.tags
-        ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+        ? formData.tags
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag)
         : [],
       location: formData.location || null,
     };
@@ -99,9 +102,7 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
     }
   };
 
-  const handleInputChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ): void => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { id, value } = e.target;
     setFormData({ ...formData, [id]: value });
   };
@@ -121,36 +122,17 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="name">Name *</label>
-            <input
-              id="name"
-              type="text"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-              placeholder="Enter todo name"
-            />
+            <input id="name" type="text" value={formData.name} onChange={handleInputChange} required placeholder="Enter todo name" />
           </div>
 
           <div className="form-group">
             <label htmlFor="dueDate">Due Date *</label>
-            <input
-              id="dueDate"
-              type="date"
-              value={formData.dueDate}
-              onChange={handleInputChange}
-              required
-            />
+            <input id="dueDate" type="date" value={formData.dueDate} onChange={handleInputChange} required />
           </div>
 
           <div className="form-group">
             <label htmlFor="notes">Notes</label>
-            <textarea
-              id="notes"
-              value={formData.notes}
-              onChange={handleInputChange}
-              placeholder="Add any additional details..."
-              rows={4}
-            />
+            <textarea id="notes" value={formData.notes} onChange={handleInputChange} placeholder="Add any additional details..." rows={4} />
           </div>
 
           <div className="form-group">
@@ -167,13 +149,7 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
 
           <div className="form-group">
             <label htmlFor="location">Location</label>
-            <input
-              id="location"
-              type="text"
-              value={formData.location}
-              onChange={handleInputChange}
-              placeholder="Enter location"
-            />
+            <input id="location" type="text" value={formData.location} onChange={handleInputChange} placeholder="Enter location" />
           </div>
 
           {validationErrors && (
@@ -190,26 +166,11 @@ const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModal
           )}
 
           <div className="modal-actions">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={onClose}
-              disabled={mutation.isPending}
-            >
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={mutation.isPending}>
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={mutation.isPending}
-            >
-              {mutation.isPending
-                ? isEditing
-                  ? 'Updating...'
-                  : 'Creating...'
-                : isEditing
-                ? 'Update'
-                : 'Create'}
+            <button type="submit" className="btn-primary" disabled={mutation.isPending}>
+              {mutation.isPending ? (isEditing ? 'Updating...' : 'Creating...') : isEditing ? 'Update' : 'Create'}
             </button>
           </div>
         </form>

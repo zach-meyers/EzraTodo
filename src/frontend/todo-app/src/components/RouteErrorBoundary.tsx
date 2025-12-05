@@ -14,14 +14,14 @@ class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBo
     super(props);
     this.state = {
       hasError: false,
-      error: null
+      error: null,
     };
   }
 
   static getDerivedStateFromError(error: Error): RouteErrorBoundaryState {
     return {
       hasError: true,
-      error
+      error,
     };
   }
 
@@ -32,48 +32,50 @@ class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBo
   handleReset = () => {
     this.setState({
       hasError: false,
-      error: null
+      error: null,
     });
   };
 
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          padding: '2rem',
-          textAlign: 'center',
-          maxWidth: '600px',
-          margin: '2rem auto'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
+        <div
+          style={{
             padding: '2rem',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-          }}>
-            <h2 style={{ color: '#e74c3c', marginBottom: '1rem' }}>
-              Error Loading Content
-            </h2>
-            <p style={{ color: '#666', marginBottom: '1.5rem' }}>
-              Something went wrong while loading this page.
-            </p>
+            textAlign: 'center',
+            maxWidth: '600px',
+            margin: '2rem auto',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '2rem',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <h2 style={{ color: '#e74c3c', marginBottom: '1rem' }}>Error Loading Content</h2>
+            <p style={{ color: '#666', marginBottom: '1.5rem' }}>Something went wrong while loading this page.</p>
 
             {import.meta.env.DEV && this.state.error && (
-              <details style={{
-                marginBottom: '1.5rem',
-                textAlign: 'left',
-                backgroundColor: '#f8f9fa',
-                padding: '1rem',
-                borderRadius: '4px'
-              }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                  Error Details
-                </summary>
-                <pre style={{
-                  fontSize: '0.85rem',
-                  overflowX: 'auto',
-                  color: '#e74c3c'
-                }}>
+              <details
+                style={{
+                  marginBottom: '1.5rem',
+                  textAlign: 'left',
+                  backgroundColor: '#f8f9fa',
+                  padding: '1rem',
+                  borderRadius: '4px',
+                }}
+              >
+                <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '0.5rem' }}>Error Details</summary>
+                <pre
+                  style={{
+                    fontSize: '0.85rem',
+                    overflowX: 'auto',
+                    color: '#e74c3c',
+                  }}
+                >
                   {this.state.error.message}
                 </pre>
               </details>
@@ -88,7 +90,7 @@ class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBo
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
-                fontWeight: 'bold'
+                fontWeight: 'bold',
               }}
             >
               Try Again

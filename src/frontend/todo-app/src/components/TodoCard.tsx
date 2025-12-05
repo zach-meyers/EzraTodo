@@ -13,7 +13,7 @@ const TodoCard = ({ todo, onEdit }: TodoCardProps) => {
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -60,9 +60,7 @@ const TodoCard = ({ todo, onEdit }: TodoCardProps) => {
         </div>
       </div>
 
-      {todo.notes && (
-        <p className="todo-notes">{todo.notes}</p>
-      )}
+      {todo.notes && <p className="todo-notes">{todo.notes}</p>}
 
       <div className="todo-metadata">
         <div className="metadata-item">
