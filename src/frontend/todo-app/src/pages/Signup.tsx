@@ -1,28 +1,30 @@
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { parseError, getErrorMessage } from '@/utils/errorUtils';
 import './Auth.css';
 
 const Signup = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string[]> | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    setError('');
+    setValidationErrors(null);
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      toast.error('Password must be at least 6 characters long');
       return;
     }
 
@@ -32,8 +34,12 @@ const Signup = () => {
       await signup(email, password);
       navigate('/');
     } catch (err) {
-      setError('Failed to create account. Please try again.');
-      console.error('Signup error:', err);
+      const parsed = parseError(err);
+      toast.error(`Signup failed: ${getErrorMessage(err)}`);
+
+      if (parsed.validationErrors) {
+        setValidationErrors(parsed.validationErrors);
+      }
     } finally {
       setLoading(false);
     }
@@ -45,7 +51,18 @@ const Signup = () => {
         <h1>Sign Up</h1>
         <p className="auth-subtitle">Create a new account to get started.</p>
 
-        {error && <div className="error-message">{error}</div>}
+        {validationErrors && (
+          <div className="error-message">
+            <strong>Validation Errors:</strong>
+            <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
+              {Object.entries(validationErrors).map(([field, errors]) => (
+                <li key={field}>
+                  <strong>{field}:</strong> {errors.join(', ')}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">

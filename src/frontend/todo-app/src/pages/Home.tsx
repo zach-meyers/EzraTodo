@@ -1,18 +1,17 @@
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useMemo, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaSignOutAlt, FaFilter } from 'react-icons/fa';
 import { useAuth } from '@/contexts/AuthContext';
-import { todosAPI } from '@/services/api';
+import { useTodos } from '@/hooks/useTodoQueries';
+import { getErrorMessage } from '@/utils/errorUtils';
 import TodoCard from '@/components/TodoCard';
 import TodoModal from '@/components/TodoModal';
-import { TodoItemResponse, TodoFiltersExtended, CreateTodoRequest } from '@/types';
+import { TodoFiltersExtended, TodoItemResponse } from '@/types';
 import './Home.css';
 
 const Home = () => {
-  const [todos, setTodos] = useState<TodoItemResponse[]>([]);
-  const [filteredTodos, setFilteredTodos] = useState<TodoItemResponse[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [editingTodo, setEditingTodo] = useState<TodoItemResponse | null>(null);
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [filters, setFilters] = useState<TodoFiltersExtended>({
     dueDateFrom: '',
@@ -26,99 +25,61 @@ const Home = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchTodos();
-  }, []);
+  const { data: todos = [], isLoading, isError, error, refetch } = useTodos();
 
-  useEffect(() => {
-    applyFilters();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todos, filters]);
+  const filteredTodos = useMemo(() => {
+    let filtered = [...todos];
 
-  const fetchTodos = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      const data = await todosAPI.getAll();
-      setTodos(data);
-    } catch (error) {
-      console.error('Error fetching todos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = (): void => {
-    let filtered: TodoItemResponse[] = [...todos];
-
-    // Search term filter
+    // generic search term
     if (filters.searchTerm) {
       const search = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(
-        todo =>
+        (todo) =>
           todo.name.toLowerCase().includes(search) ||
           todo.notes?.toLowerCase().includes(search) ||
           todo.location?.toLowerCase().includes(search)
       );
     }
 
-    // Due date filters
+    // due date
     if (filters.dueDateFrom) {
-      filtered = filtered.filter(
-        (todo) => new Date(todo.dueDate) >= new Date(filters.dueDateFrom!)
-      );
+      filtered = filtered.filter((todo) => new Date(todo.dueDate) >= new Date(filters.dueDateFrom!));
     }
     if (filters.dueDateTo) {
-      filtered = filtered.filter(
-        (todo) => new Date(todo.dueDate) <= new Date(filters.dueDateTo!)
-      );
+      filtered = filtered.filter((todo) => new Date(todo.dueDate) <= new Date(filters.dueDateTo!));
     }
 
-    // Created date filters
+    // created date
     if (filters.createdDateFrom) {
-      filtered = filtered.filter(
-        (todo) => new Date(todo.createdDate) >= new Date(filters.createdDateFrom!)
-      );
+      filtered = filtered.filter((todo) => new Date(todo.createdDate) >= new Date(filters.createdDateFrom!));
     }
     if (filters.createdDateTo) {
-      filtered = filtered.filter(
-        (todo) => new Date(todo.createdDate) <= new Date(filters.createdDateTo!)
-      );
+      filtered = filtered.filter((todo) => new Date(todo.createdDate) <= new Date(filters.createdDateTo!));
     }
 
-    // Tag filter
+    // tag
     if (filters.tag) {
-      filtered = filtered.filter((todo) =>
-        todo.tags?.some((tag) => tag.toLowerCase().includes(filters.tag!.toLowerCase()))
-      );
+      filtered = filtered.filter((todo) => todo.tags?.some((tag) => tag.toLowerCase().includes(filters.tag!.toLowerCase())));
     }
 
-    // Sort by due date
     filtered.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-    setFilteredTodos(filtered);
+    return filtered;
+  }, [todos, filters]);
+
+  const handleCreateTodo = (): void => {
+    setEditingTodo(null);
+    setIsModalOpen(true);
   };
 
-  const handleCreateTodo = async (todoData: CreateTodoRequest): Promise<void> => {
-    try {
-      await todosAPI.create(todoData);
-      setIsModalOpen(false);
-      fetchTodos();
-    } catch (error) {
-      console.error('Error creating todo:', error);
-      alert('Failed to create todo');
-    }
+  const handleEditTodo = (todo: TodoItemResponse): void => {
+    setEditingTodo(todo);
+    setIsModalOpen(true);
   };
 
-  const handleDeleteTodo = async (id: number): Promise<void> => {
-    if (!window.confirm('Are you sure you want to delete this todo?')) return;
-
-    try {
-      await todosAPI.delete(id);
-      fetchTodos();
-    } catch (error) {
-      console.error('Error deleting todo:', error);
-      alert('Failed to delete todo');
-    }
+  const handleCloseModal = (): void => {
+    setIsModalOpen(false);
+    setEditingTodo(null);
   };
 
   const handleLogout = (): void => {
@@ -141,6 +102,54 @@ const Home = () => {
     setFilters({ ...filters, [field]: value });
   };
 
+  if (isLoading) {
+    return (
+      <div className="home-container">
+        <nav className="navbar">
+          <div className="navbar-content">
+            <h1>My Todos</h1>
+            <div className="navbar-actions">
+              <span className="user-email">{user?.email}</span>
+              <button className="btn-logout" onClick={handleLogout} title="Logout">
+                <FaSignOutAlt />
+              </button>
+            </div>
+          </div>
+        </nav>
+        <div className="main-content">
+          <div className="loading">Loading todos...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="home-container">
+        <nav className="navbar">
+          <div className="navbar-content">
+            <h1>My Todos</h1>
+            <div className="navbar-actions">
+              <span className="user-email">{user?.email}</span>
+              <button className="btn-logout" onClick={handleLogout} title="Logout">
+                <FaSignOutAlt />
+              </button>
+            </div>
+          </div>
+        </nav>
+        <div className="main-content">
+          <div className="error">
+            <h2>Error Loading Todos</h2>
+            <p>{getErrorMessage(error)}</p>
+            <button className="btn-create" onClick={() => refetch()}>
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="home-container">
       <nav className="navbar">
@@ -162,20 +171,15 @@ const Home = () => {
               type="text"
               placeholder="Search todos..."
               value={filters.searchTerm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                handleFilterChange('searchTerm', e.target.value)
-              }
+              onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('searchTerm', e.target.value)}
             />
           </div>
 
           <div className="header-actions">
-            <button
-              className="btn-filter"
-              onClick={() => setShowFilters(!showFilters)}
-            >
+            <button className="btn-filter" onClick={() => setShowFilters(!showFilters)}>
               <FaFilter /> Filters
             </button>
-            <button className="btn-create" onClick={() => setIsModalOpen(true)}>
+            <button className="btn-create" onClick={handleCreateTodo}>
               <FaPlus /> New Todo
             </button>
           </div>
@@ -189,9 +193,7 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.dueDateFrom}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('dueDateFrom', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('dueDateFrom', e.target.value)}
                 />
               </div>
 
@@ -200,9 +202,7 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.dueDateTo}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('dueDateTo', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('dueDateTo', e.target.value)}
                 />
               </div>
 
@@ -211,9 +211,7 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.createdDateFrom}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('createdDateFrom', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('createdDateFrom', e.target.value)}
                 />
               </div>
 
@@ -222,9 +220,7 @@ const Home = () => {
                 <input
                   type="date"
                   value={filters.createdDateTo}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('createdDateTo', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('createdDateTo', e.target.value)}
                 />
               </div>
 
@@ -234,9 +230,7 @@ const Home = () => {
                   type="text"
                   placeholder="Filter by tag..."
                   value={filters.tag}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleFilterChange('tag', e.target.value)
-                  }
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleFilterChange('tag', e.target.value)}
                 />
               </div>
             </div>
@@ -253,18 +247,12 @@ const Home = () => {
           </p>
         </div>
 
-        {loading ? (
-          <div className="loading">Loading todos...</div>
-        ) : filteredTodos.length === 0 ? (
+        {filteredTodos.length === 0 ? (
           <div className="empty-state">
             <h2>No todos found</h2>
-            <p>
-              {todos.length === 0
-                ? 'Create your first todo to get started!'
-                : 'Try adjusting your filters or search term.'}
-            </p>
+            <p>{todos.length === 0 ? 'Create your first todo to get started!' : 'Try adjusting your filters or search term.'}</p>
             {todos.length === 0 && (
-              <button className="btn-create" onClick={() => setIsModalOpen(true)}>
+              <button className="btn-create" onClick={handleCreateTodo}>
                 <FaPlus /> Create Todo
               </button>
             )}
@@ -272,17 +260,13 @@ const Home = () => {
         ) : (
           <div className="todos-grid">
             {filteredTodos.map((todo) => (
-              <TodoCard key={todo.id} todo={todo} onDelete={handleDeleteTodo} />
+              <TodoCard key={todo.id} todo={todo} onEdit={handleEditTodo} />
             ))}
           </div>
         )}
       </div>
 
-      <TodoModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateTodo}
-      />
+      <TodoModal isOpen={isModalOpen} onClose={handleCloseModal} initialData={editingTodo} />
     </div>
   );
 };

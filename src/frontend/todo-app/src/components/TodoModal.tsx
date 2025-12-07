@@ -1,20 +1,40 @@
-import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
+import { useEffect } from 'react';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { FaTimes } from 'react-icons/fa';
-import { TodoModalProps, TodoFormData } from '@/types';
+import toast from 'react-hot-toast';
+import { useCreateTodo, useUpdateTodo } from '@/hooks/useTodoMutations';
+import { TodoModalProps, TodoFormData, TodoItemResponse, MutateTodoRequest } from '@/types';
+import { parseError, getErrorMessage } from '@/utils/errorUtils';
 import './TodoModal.css';
 
-const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalProps) => {
-  const [formData, setFormData] = useState<TodoFormData>({
-    name: '',
-    dueDate: '',
-    notes: '',
-    tags: '',
-    location: '',
+const TodoModal = ({ isOpen, onClose, initialData = null, onSuccess }: TodoModalProps) => {
+  const createTodo = useCreateTodo();
+  const updateTodo = useUpdateTodo();
+
+  const isEditing = initialData !== null;
+  const mutation = isEditing ? updateTodo : createTodo;
+
+  // form setup
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    setError,
+  } = useForm<TodoFormData>({
+    defaultValues: {
+      name: '',
+      dueDate: '',
+      notes: '',
+      tags: '',
+      location: '',
+    },
   });
 
+  // set form when editing or reset when creating
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      reset({
         name: initialData.name || '',
         dueDate: initialData.dueDate?.split('T')[0] || '',
         notes: initialData.notes || '',
@@ -22,7 +42,7 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
         location: initialData.location || '',
       });
     } else {
-      setFormData({
+      reset({
         name: '',
         dueDate: '',
         notes: '',
@@ -30,30 +50,74 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
         location: '',
       });
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, reset]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
-    e.preventDefault();
+  const handleUpdateTodo = (initialData: TodoItemResponse, todoData: MutateTodoRequest): void => {
+    updateTodo.mutate(
+      { id: initialData.id, todo: todoData },
+      {
+        onSuccess: () => {
+          onClose();
+          onSuccess?.();
+        },
+        onError: (err) => {
+          const parsed = parseError(err);
+          toast.error(`Failed to update todo: ${getErrorMessage(err)}`);
 
-    const todoData = {
-      name: formData.name,
-      dueDate: new Date(formData.dueDate).toISOString(),
-      notes: formData.notes || null,
-      tags: formData.tags
-        ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
-        : [],
-      location: formData.location || null,
-    };
-
-    onSubmit(todoData);
-    onClose();
+          if (parsed.validationErrors) {
+            Object.entries(parsed.validationErrors).forEach(([field, messages]) => {
+              setError(field as keyof TodoFormData, {
+                type: 'server',
+                message: messages.join(', '),
+              });
+            });
+          }
+        },
+      }
+    );
   };
 
-  const handleInputChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ): void => {
-    const { id, value } = e.target;
-    setFormData({ ...formData, [id]: value });
+  const handleCreateTodo = (todoData: MutateTodoRequest): void => {
+    createTodo.mutate(todoData, {
+      onSuccess: () => {
+        onClose();
+        onSuccess?.();
+      },
+      onError: (err) => {
+        const parsed = parseError(err);
+        toast.error(`Failed to create todo: ${getErrorMessage(err)}`);
+
+        if (parsed.validationErrors) {
+          Object.entries(parsed.validationErrors).forEach(([field, messages]) => {
+            setError(field as keyof TodoFormData, {
+              type: 'server',
+              message: messages.join(', '),
+            });
+          });
+        }
+      },
+    });
+  };
+
+  const onSubmit: SubmitHandler<TodoFormData> = (data) => {
+    const todoData: MutateTodoRequest = {
+      name: data.name,
+      dueDate: new Date(data.dueDate).toISOString(),
+      notes: data.notes || null,
+      tags: data.tags
+        ? data.tags
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag)
+        : [],
+      location: data.location || null,
+    };
+
+    if (isEditing && initialData) {
+      handleUpdateTodo(initialData, todoData);
+    } else {
+      handleCreateTodo(todoData);
+    }
   };
 
   if (!isOpen) return null;
@@ -68,17 +132,23 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="form-group">
             <label htmlFor="name">Name *</label>
             <input
               id="name"
               type="text"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
+              {...register('name', {
+                required: 'Name is required',
+                maxLength: {
+                  value: 200,
+                  message: 'Name must not exceed 200 characters',
+                },
+              })}
               placeholder="Enter todo name"
+              className={errors.name ? 'error' : ''}
             />
+            {errors.name && <span className="error-message">{errors.name.message}</span>}
           </div>
 
           <div className="form-group">
@@ -86,21 +156,24 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
             <input
               id="dueDate"
               type="date"
-              value={formData.dueDate}
-              onChange={handleInputChange}
-              required
+              {...register('dueDate', {
+                required: 'Due date is required',
+              })}
+              className={errors.dueDate ? 'error' : ''}
             />
+            {errors.dueDate && <span className="error-message">{errors.dueDate.message}</span>}
           </div>
 
           <div className="form-group">
             <label htmlFor="notes">Notes</label>
             <textarea
               id="notes"
-              value={formData.notes}
-              onChange={handleInputChange}
+              {...register('notes')}
               placeholder="Add any additional details..."
               rows={4}
+              className={errors.notes ? 'error' : ''}
             />
+            {errors.notes && <span className="error-message">{errors.notes.message}</span>}
           </div>
 
           <div className="form-group">
@@ -108,11 +181,12 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
             <input
               id="tags"
               type="text"
-              value={formData.tags}
-              onChange={handleInputChange}
+              {...register('tags')}
               placeholder="Enter tags separated by commas (e.g., work, urgent, meeting)"
+              className={errors.tags ? 'error' : ''}
             />
             <small className="help-text">Separate multiple tags with commas</small>
+            {errors.tags && <span className="error-message">{errors.tags.message}</span>}
           </div>
 
           <div className="form-group">
@@ -120,18 +194,19 @@ const TodoModal = ({ isOpen, onClose, onSubmit, initialData = null }: TodoModalP
             <input
               id="location"
               type="text"
-              value={formData.location}
-              onChange={handleInputChange}
+              {...register('location')}
               placeholder="Enter location"
+              className={errors.location ? 'error' : ''}
             />
+            {errors.location && <span className="error-message">{errors.location.message}</span>}
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={mutation.isPending || isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              {initialData ? 'Update' : 'Create'}
+            <button type="submit" className="btn-primary" disabled={mutation.isPending || isSubmitting}>
+              {mutation.isPending ? (isEditing ? 'Updating...' : 'Creating...') : isEditing ? 'Update' : 'Create'}
             </button>
           </div>
         </form>

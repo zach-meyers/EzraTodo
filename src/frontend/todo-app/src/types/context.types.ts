@@ -1,7 +1,5 @@
 import { User } from './models';
 
-// ==================== Auth Context ====================
-
 export interface AuthContextValue {
   user: User | null;
   loading: boolean;

@@ -1,13 +1,5 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import {
-  LoginRequest,
-  SignupRequest,
-  AuthResponse,
-  TodoItemResponse,
-  CreateTodoRequest,
-  UpdateTodoRequest,
-  TodoFilters
-} from '@/types';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { LoginRequest, SignupRequest, AuthResponse, TodoItemResponse, MutateTodoRequest, TodoFilters, ErrorResponse } from '@/types';
 
 const API_BASE_URL = 'https://localhost:5001/api';
 
@@ -32,6 +24,37 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError<ErrorResponse>) => {
+    // Handle 401 - token expired
+    if (error.response?.status === 401) {
+      // Clear auth state
+      localStorage.removeItem('token');
+      // Redirect to login (if not already there)
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
+
+    // Log error to console in development
+    if (import.meta.env.DEV) {
+      console.error('API Error:', {
+        url: error.config?.url,
+        status: error.response?.status,
+        data: error.response?.data,
+        traceId: error.response?.data?.traceId,
+      });
+    }
+
+    // TODO: Send to error logging service in production
+    // logErrorToService(error);
+
+    return Promise.reject(error);
+  }
+);
+
 // Auth API
 export const authAPI = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
@@ -47,30 +70,35 @@ export const authAPI = {
   },
 };
 
-// Todos API
-export const todosAPI = {
+// Todo API
+export const todoAPI = {
   getAll: async (filters: TodoFilters = {}): Promise<TodoItemResponse[]> => {
-    const response = await api.get<TodoItemResponse[]>('/todos', { params: filters });
+    const response = await api.get<TodoItemResponse[]>('/todo', {
+      params: filters,
+    });
     return response.data;
   },
 
   getById: async (id: number): Promise<TodoItemResponse> => {
-    const response = await api.get<TodoItemResponse>(`/todos/${id}`);
+    const response = await api.get<TodoItemResponse>(`/todo/${id}`);
     return response.data;
   },
 
-  create: async (todo: CreateTodoRequest): Promise<TodoItemResponse> => {
-    const response = await api.post<TodoItemResponse>('/todos', todo);
+  create: async (todo: MutateTodoRequest): Promise<TodoItemResponse> => {
+    const response = await api.post<TodoItemResponse>('/todo', todo);
     return response.data;
   },
 
-  update: async (id: number, todo: UpdateTodoRequest): Promise<TodoItemResponse> => {
-    const response = await api.put<TodoItemResponse>(`/todos/${id}`, { ...todo, id });
+  update: async (id: number, todo: MutateTodoRequest): Promise<TodoItemResponse> => {
+    const response = await api.put<TodoItemResponse>(`/todo/${id}`, {
+      ...todo,
+      id,
+    });
     return response.data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/todos/${id}`);
+    await api.delete(`/todo/${id}`);
   },
 };
 

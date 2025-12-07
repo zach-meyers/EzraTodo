@@ -3,3 +3,4 @@ export * from './api.types';
 export * from './models';
 export * from './components.types';
 export * from './context.types';
+export * from './error.types';

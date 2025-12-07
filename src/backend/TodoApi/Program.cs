@@ -1,22 +1,58 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
 using TodoApi.Data;
+using TodoApi.Filters;
+using TodoApi.Middleware;
 using TodoApi.Options;
 using TodoApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// add features to the app service container
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
+// configure routing and swagger
+builder.Services.AddControllers(options => { options.Filters.Add<ValidationFilter>(); })
+    .AddJsonOptions(options =>
+    {
+        // Ensure case-insensitive property matching for JSON deserialization
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' followed by a space and the token (e.g., 'Bearer 12345abcdef')."
+    });
 
-// configure SQLite
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+// configure validation
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+// configure data source
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Todo")));
 
-// configure jwt auth
+// configure auth
 builder.Services
     .AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection("Jwt"));
@@ -26,40 +62,51 @@ builder.Services
     .AddJwtBearer();
 builder.Services.AddAuthorization();
 
-// register services
-builder.Services.AddScoped<IAuthService, AuthService>();
-
 // configure CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("TodoApp", policy =>
     {
+        // TODO: add this into config
         policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
+// register services
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITodoService, TodoService>();
+
 var app = builder.Build();
 
-// configure the HTTP request pipeline
+// serve swagger in dev only
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
+// configure the HTTP request pipeline
 app.UseHttpsRedirection();
+app.UseMiddleware<ExceptionHandlerMiddleware>();
 app.UseCors("TodoApp");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ensure database is created
-using (var scope = app.Services.CreateScope())
+// apply database migrations
+if (app.Environment.IsDevelopment())
 {
+    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.EnsureCreated();
+
+    context.Database.Migrate();
+    // Seed development data
+    var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
+    DbSeeder.SeedDevelopmentData(context, authService);
 }
 
 await app.RunAsync();

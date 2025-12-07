@@ -1,27 +1,33 @@
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { parseError, getErrorMessage } from '@/utils/errorUtils';
 import './Auth.css';
 
 const Login = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string[]> | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    setError('');
+    setValidationErrors(null);
     setLoading(true);
 
     try {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError('Failed to login. Please check your credentials.');
-      console.error('Login error:', err);
+      const parsed = parseError(err);
+      toast.error(`Login failed: ${getErrorMessage(err)}`);
+
+      if (parsed.validationErrors) {
+        setValidationErrors(parsed.validationErrors);
+      }
     } finally {
       setLoading(false);
     }
@@ -33,7 +39,18 @@ const Login = () => {
         <h1>Login</h1>
         <p className="auth-subtitle">Welcome back! Please login to your account.</p>
 
-        {error && <div className="error-message">{error}</div>}
+        {validationErrors && (
+          <div className="error-message">
+            <strong>Validation Errors:</strong>
+            <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
+              {Object.entries(validationErrors).map(([field, errors]) => (
+                <li key={field}>
+                  <strong>{field}:</strong> {errors.join(', ')}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">

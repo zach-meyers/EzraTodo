@@ -1,12 +1,8 @@
-// ==================== User Model ====================
-
 export interface User {
   id: string; // From JWT 'sub' claim
   email: string;
   token: string;
 }
-
-// ==================== JWT Decoded Types ====================
 
 export interface JwtPayload {
   sub: string; // User ID
@@ -17,8 +13,7 @@ export interface JwtPayload {
   aud: string; // Audience
 }
 
-// ==================== Form Data Types ====================
-
+// form types
 export interface TodoFormData {
   name: string;
   dueDate: string; // YYYY-MM-DD format for input[type="date"]

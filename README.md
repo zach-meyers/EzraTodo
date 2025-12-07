@@ -1,64 +1,36 @@
 # EzraTodo
 
-A full-stack todo application built with React, Vite, .NET Core, and SQLite.
+A modern, full-stack todo application built with React, TypeScript, Vite, .NET Core, and SQLite. Features a clean architecture with JWT authentication, type safety, and optimistic updates.
 
 ## Features
 
-- **Authentication**: Secure login and signup with JWT tokens and bcrypt password hashing
-- **Todo Management**: Create, read, and delete todos
-- **Rich Todo Details**:
-  - Name (required)
-  - Due date (required)
-  - Notes (optional)
-  - Tags (optional, multiple tags supported)
-  - Location (optional)
-  - Auto-tracked creation date
-- **Advanced Filtering**: Filter todos by:
-  - Search term (searches name, notes, and location)
-  - Due date range
-  - Created date range
-  - Tags
-- **Responsive Design**: Works great on desktop and mobile devices
-- **Overdue Indicators**: Visual indicators for overdue todos
+- **Authentication**: Secure login and signup with JWT tokens (HS256) and BCrypt password hashing
+- **Todo Management**: Full CRUD operations with optimistic updates for instant UI feedback
+- **Filtering**: Client-side text search and field-specific filtering
+- **Responsive Design**: Mobile-first design with card-based layout
+- **Overdue Indicators**: Visual indicators with red accent for overdue todos
+- **Smart Caching**: React Query integration with 5-minute cache and background refetch
+- **Global Error Handling**: Centralized error handling with consistent error responses across the stack
+- **Database Migrations**: EF Core migrations for version-controlled schema management
 
-## Technology Stack
+## Tech Stack
 
 ### Backend
-- .NET 9.0
-- ASP.NET Core Web API
-- Entity Framework Core
-- SQLite Database
-- JWT Authentication
-- BCrypt for password hashing
+
+- **.NET 9 Web API** - RESTful API with modern C# features
+- **EF Core 9** - ORM with SQLite provider and code-first migrations
+- **JWT Authentication** - Bearer token authentication with 24-hour expiration and secure password hashing
+- **FluentValidation** - Declarative validation rules with automatic model validation
+- **OpenApi / Swagger** - Automatic API documentation
 
 ### Frontend
-- React 18
-- Vite
-- React Router
-- Axios for API calls
-- React Icons
-- JWT Decode
 
-## Project Structure
-
-```
-src/
-├── backend/
-│   └── TodoApi/
-│       ├── Controllers/      # API controllers
-│       ├── Models/           # Database models
-│       ├── Data/             # DbContext
-│       ├── DTOs/             # Data transfer objects
-│       ├── Services/         # Business logic services
-│       └── Program.cs        # Application entry point
-└── frontend/
-    └── todo-app/
-        └── src/
-            ├── components/   # Reusable React components
-            ├── pages/        # Page components
-            ├── contexts/     # React contexts (Auth)
-            └── services/     # API service layer
-```
+- **React 19** - Modern React with hooks
+- **TypeScript 5.9** - Strict type checking enabled
+- **Vite 7.2** - Fast build tool and dev server
+- **TanStack Query** (React Query) - Server state management with caching
+- **Toast** - react-hot-toast notifications for user feedback
+- **Forms** - react-hook-form for easy form setup, validation, and submission
 
 ## Getting Started
 
@@ -71,16 +43,19 @@ src/
 ### Backend Setup
 
 1. Navigate to the backend directory:
+
    ```bash
    cd src/backend/TodoApi
    ```
 
-2. Restore dependencies (if needed):
+2. Restore dependencies:
+
    ```bash
    dotnet restore
    ```
 
 3. Run the backend:
+
    ```bash
    dotnet run
    ```
@@ -90,16 +65,19 @@ src/
 ### Frontend Setup
 
 1. Navigate to the frontend directory:
+
    ```bash
    cd src/frontend/todo-app
    ```
 
-2. Install dependencies (if not already installed):
+2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Start the development server:
+
    ```bash
    npm run dev
    ```
@@ -110,83 +88,28 @@ src/
 
 1. **Sign Up**: Create a new account with your email and password
 2. **Login**: Sign in with your credentials
-3. **Create Todos**: Click "New Todo" to create a new todo item
-4. **Filter Todos**: Use the search bar and filters to find specific todos
-5. **Delete Todos**: Click the trash icon on any todo card to delete it
+3. **Create Todo**: Click "New Todo" to create a new todo item
+4. **Edit Todo**: Click the edit icon on any todo card to edit it
+5. **Filter Todos**: Use the search bar and filters to find specific todos
+6. **Delete Todos**: Click the trash icon on any todo card to delete it
 
-## API Endpoints
+### Next Steps
 
-### Authentication
-- `POST /api/auth/signup` - Create a new user account
-- `POST /api/auth/login` - Login and receive JWT token
-
-### Todos (Requires Authentication)
-- `GET /api/todos` - Get all todos for authenticated user (supports filtering via query params)
-- `GET /api/todos/{id}` - Get a specific todo
-- `POST /api/todos` - Create a new todo
-- `PUT /api/todos/{id}` - Update a todo
-- `DELETE /api/todos/{id}` - Delete a todo
-
-## Database
-
-The application uses SQLite for data storage. The database file (`todos.db`) is automatically created in the backend directory when you first run the application.
-
-### Database Schema
-
-**Users Table**
-- Id (Primary Key)
-- Email (Unique)
-- PasswordHash
-- CreatedAt
-
-**TodoItems Table**
-- Id (Primary Key)
-- UserId (Foreign Key)
-- Name
-- DueDate
-- Notes
-- Location
-- CreatedDate
-
-**TodoItemTags Table**
-- Id (Primary Key)
-- TodoItemId (Foreign Key)
-- Tag
-
-## Security Features
-
-- Passwords are hashed using BCrypt before storage
-- JWT tokens are used for authentication
-- API endpoints are protected with authorization middleware
-- CORS is configured to only allow requests from the frontend
-- User data is isolated (users can only see their own todos)
-
-## Configuration
-
-### Backend Configuration (appsettings.json)
-
-The JWT secret key and database connection are configured in `src/backend/TodoApi/appsettings.json`.
-
-**Note**: For production, move the JWT secret key to environment variables or secure configuration.
-
-### Frontend Configuration
-
-The API base URL is set to `http://localhost:5000/api` in `src/frontend/todo-app/src/services/api.js`. Update this if your backend runs on a different port.
-
-## Development
-
-### Building for Production
-
-**Backend**:
-```bash
-cd src/backend/TodoApi
-dotnet publish -c Release
-```
-
-**Frontend**:
-```bash
-cd src/frontend/todo-app
-npm run build
-```
-
-The production build will be in the `dist` folder.
+- **Soft Deletes**: Add status columns for todoItem and todoItemTag so a history can be preserved
+- **Refresh Tokens**: Improve security with short-lived access tokens
+- **Email Verification**: Ensure the user's email is correct on signup so we can send info
+- **Password Reset**: Allow users to reset their password by sending short-lived token to their email
+- **Password Complexity**: Enforce password complexity to prevent users from using easily guessable secrets
+- **Profile Management**: Store more user info and allow users to modify this data
+- **Pagination**: Add server-side pagination/filtering for large datasets
+- **Todo Completion**: Allow users to "complete" their todos and have those items moved off the main list
+- **Pnpm**: Use `pnpm` as the package manager for faster installs and a smaller `node_modules`
+- **API Versioning**: Prepare for future changes
+- **Health Checks**: `/health` endpoint for monitoring
+- **CORS**: Add CORS to configuration for production deployment
+- **Rate Limiting**: Protect against abuse
+- **Logging/Monitoring**: Setup logging and monitoring to ensure service availability
+- **Docker**: Containerize for easier deployment
+- **CI/CD Pipeline**: Automated testing and deployment
+- **E2E Testing**: Frontend user flows with Playwright/Cypress
+- **Frontend Error Logging**: Log frontend errors to service for debugging

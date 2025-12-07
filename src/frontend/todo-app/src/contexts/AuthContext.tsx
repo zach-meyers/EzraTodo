@@ -22,16 +22,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // check if token already exists
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const decoded = jwtDecode<JwtPayload>(token);
-        // Check if token is expired
-        if (decoded.exp * 1000 > Date.now()) {
+        const jwt = jwtDecode<JwtPayload>(token);
+        // check if token is expired
+        if (jwt.exp * 1000 > Date.now()) {
           setUser({
-            id: decoded.sub,
-            email: decoded.email,
+            id: jwt.sub,
+            email: jwt.email,
             token,
           });
         } else {
@@ -45,8 +45,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<void> => {
-    const data = await authAPI.login(email, password);
+  const signup = async (email: string, password: string): Promise<void> => {
+    const data = await authAPI.signup(email, password);
     localStorage.setItem('token', data.token);
     const decoded = jwtDecode<JwtPayload>(data.token);
     setUser({
@@ -56,8 +56,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
   };
 
-  const signup = async (email: string, password: string): Promise<void> => {
-    const data = await authAPI.signup(email, password);
+  const login = async (email: string, password: string): Promise<void> => {
+    const data = await authAPI.login(email, password);
     localStorage.setItem('token', data.token);
     const decoded = jwtDecode<JwtPayload>(data.token);
     setUser({
@@ -80,9 +80,5 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

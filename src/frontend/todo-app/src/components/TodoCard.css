@@ -30,6 +30,12 @@
   flex: 1;
 }
 
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn,
 .delete-btn {
   background: transparent;
   border: none;
@@ -38,11 +44,22 @@
   padding: 4px 8px;
   border-radius: 4px;
   transition: color 0.2s, background-color 0.2s;
+  font-size: 14px;
+}
+
+.edit-btn:hover {
+  color: #667eea;
+  background-color: #f0f4ff;
 }
 
 .delete-btn:hover {
   color: #e74c3c;
   background-color: #fee;
+}
+
+.edit-btn:disabled,
+.delete-btn:disabled {
+  cursor: not-allowed;
 }
 
 .todo-notes {

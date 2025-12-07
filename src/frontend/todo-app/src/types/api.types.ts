@@ -29,16 +29,7 @@ export interface TodoItemResponse {
   createdDate: string; // ISO 8601 date string
 }
 
-export interface CreateTodoRequest {
-  name: string;
-  dueDate: string; // ISO 8601 date string
-  notes: string | null;
-  tags: string[];
-  location: string | null;
-}
-
-export interface UpdateTodoRequest {
-  id: number;
+export interface MutateTodoRequest {
   name: string;
   dueDate: string; // ISO 8601 date string
   notes: string | null;

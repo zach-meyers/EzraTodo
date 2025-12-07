@@ -1,18 +1,16 @@
-import { TodoItemResponse, CreateTodoRequest } from './api.types';
+import { TodoItemResponse } from './api.types';
 import { ReactNode } from 'react';
-
-// ==================== Component Props ====================
 
 export interface TodoCardProps {
   todo: TodoItemResponse;
-  onDelete: (id: number) => void;
+  onEdit?: (todo: TodoItemResponse) => void;
 }
 
 export interface TodoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (todoData: CreateTodoRequest) => void | Promise<void>;
   initialData?: TodoItemResponse | null;
+  onSuccess?: () => void; // Optional callback after successful mutation
 }
 
 export interface ProtectedRouteProps {
